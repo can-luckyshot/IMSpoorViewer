@@ -1,2 +1,2 @@
 # IMSpoorViewer
-Simple javascript GIS viewer for IMSpoor files build with OpenLayers
+Simple javascript GIS viewer for IMSpoor files built with OpenLayers
