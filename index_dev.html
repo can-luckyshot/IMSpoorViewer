@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="http://openlayers.org/en/v3.10.1/css/ol.css" type="text/css">
+    <style>
+		html,body{
+			height: 100%;
+			width: 100%;
+			overflow: hidden;
+		}
+		
+		#nav {
+		  position: absolute;
+		  top: 0;
+		  bottom: 0;
+		  width: 15%;
+		}
+		#map {
+		  position: absolute;
+		  top: 0;
+		  left: 15%;
+		  bottom: 0;
+		  width: 85%;
+		}
+		#drop_zone {
+			width: 80%;
+			height: 15%;
+			border: 3px coral solid;
+		}
+		#legend {
+			width: 80%;
+			border: 3px coral solid;
+			height: 70%;
+			margin-bottom: 5px;
+		}
+		
+    </style>
+    <script src="http://openlayers.org/en/v3.10.1/build/ol.js" type="text/javascript"></script>
+    <script src="proj4.js" type="text/javascript"></script>
+    <script src="imx_render.js" type="text/javascript"></script>
+
+    <title>IMSpoor IMX Viewer 0.1</title>
+  </head>
+  <body onload="init()">
+		<div id="nav">
+			<div id="legend"></div>
+			<div id="drop_zone">Sleep hier een IMX bestand in</div>
+			<p>Download hier een voorbeeld bestand:<br/>
+			<a href="IMSpoor.xml" download>Valburg</a>
+		</p>
+		</div>
+    <div id="map" class="map"></div>
+
+	
+  </body>
+</html>
+
+
+        
+    
