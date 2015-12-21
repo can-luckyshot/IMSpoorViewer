@@ -1,37 +1,13 @@
 		var map,vector;
 		var image = new ol.style.Circle({
 			radius: 4,
-			stroke: new ol.style.Stroke({color: 'red', width: 4})
+			stroke: new ol.style.Stroke({color: 'red', width: 5})
 		});
-		var styles = {
-		  'Point': [new ol.style.Style({
-			image: image,
-			text: new ol.style.Text({
-				text: '',
-				fill: new ol.style.Fill({color: 'red'}),
-				stroke: new ol.style.Stroke({color: 'red', width: 1}),
-				offsetX: 0,
-				offsetY: 0,
-			})
-		  })],
-		  'LineString': [new ol.style.Style({
-			stroke: new ol.style.Stroke({
-			  color: 'blue',
-			  width: 4
-			}),
-			text: new ol.style.Text({
-				text: '',
-				fill: new ol.style.Fill({color: 'black'}),
-				stroke: new ol.style.Stroke({color: 'black', width: 1}),
-				offsetX: 0,
-				offsetY: 0,
-			})
-		  })]		  
-		};
-		
+				
 		var styleFunction = function(feature, resolution) {
 			var ft = feature.getGeometry().getType();
 			var style;
+			console.log('style: '+ft);
 			if(ft == 'Point'){
 				style = new ol.style.Style({
 					image: image,
@@ -41,6 +17,24 @@
 						stroke: new ol.style.Stroke({color: 'red', width: 1}),
 						offsetX: 0,
 						offsetY: -10,
+					})
+				});
+			}
+			else if(ft == 'Polygon'){
+				style = new ol.style.Style({
+					stroke: new ol.style.Stroke({
+					  color: 'green',
+					  width: 4
+					}),
+					fill: new ol.style.Fill({
+						color: 'rgba(0, 255, 0, 0.3)'
+					}),
+					text: new ol.style.Text({
+						text: feature.get('label'),
+						fill: new ol.style.Fill({color: 'black'}),
+						stroke: new ol.style.Stroke({color: 'black', width: 1}),
+						offsetX: 0,
+						offsetY: 0,
 					})
 				});
 			}
@@ -58,6 +52,9 @@
 						offsetY: -5,
 					})
 				});
+			}
+			else{
+				console.log('unknown style');
 			}
 			return [style];
 		};
@@ -90,6 +87,7 @@
 			var xmlDoc = parser.parseFromString(text,"text/xml");
 			procesTracks(xmlDoc);
 			procesJunctions(xmlDoc);
+			procesGeoSubcodeArea(xmlDoc);
 			fillLegend(xmlDoc);
 			map.render();
 			
@@ -105,17 +103,28 @@
 			map.getView().fit(extent,map.getSize(),options);
 		}
 		
+		var nsResolver = function(element){
+			return 'http://www.prorail.nl/IMSpoor';
+		};
+		
 		function fillLegend(xmlDoc){
 			var legend = document.getElementById("legend");
 			if(legend){
-				legend.appendChild(listItem('Knopen: '+xmlDoc.getElementsByTagName("Node").length));
-				legend.appendChild(listItem('Takken: '+xmlDoc.getElementsByTagName("Edge").length));
-				legend.appendChild(listItem('Wissels: '+count(xmlDoc,"Junction",'junctionType','singleSwitch')));
-				legend.appendChild(listItem('Stootjukken: '+count(xmlDoc,'Junction','junctionType','bufferStop')));
-				legend.appendChild(listItem('Engelse Wissels: '+count(xmlDoc,'Junction','junctionType','fullSlipCrossing')));
-				legend.appendChild(listItem('Half Engelse Wissels: '+count(xmlDoc,'Junction','junctionType','slipCrossing')));
-				legend.appendChild(listItem('Kruizen: '+count(xmlDoc,'Junction','junctionType','crossing')));
+				legend.appendChild(listItem('Knopen: '+ xpathCount(xmlDoc,'//ims:Node')));
+				legend.appendChild(listItem('Takken: '+ xpathCount(xmlDoc,'//ims:Edge')));
+				legend.appendChild(listItem('Wissels: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSwitch']")));
+				legend.appendChild(listItem('Stootjukken: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='bufferStop']")));
+				legend.appendChild(listItem('Engelse Wissels: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='fullSlipCrossing']")));
+				legend.appendChild(listItem('Half Engelse Wissels: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSlipCrossing']")));
+				legend.appendChild(listItem('Kruizen: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='crossing']")));
+				legend.appendChild(listItem('Secties: '+xpathCount(xmlDoc,"//ims:SectionDemarcation")));
+				legend.appendChild(listItem('Geocode subgebieden: '+xpathCount(xmlDoc,"//ims:GeoSubcodeArea")));
 			}
+		}
+		
+		function xpathCount(xmlDoc,expression){
+			var result = xmlDoc.evaluate('count('+expression+')', xmlDoc, nsResolver, XPathResult.ANY_TYPE,null);
+			return result.numberValue;
 		}
 		
 		function count(xmlDoc,nodeName,attibute,type){
@@ -138,19 +147,20 @@
 		}
 		
 		function procesJunctions(xmlDoc){
-			var junctions = xmlDoc.getElementsByTagName("Junction");
-			for(var i=0;i<junctions.length;i++){
-				var poslist = junctions[i].getElementsByTagName("posList")[0].childNodes[0];
+			var junctions = xmlDoc.evaluate('//ims:Junction', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
+			for ( var i=0 ; i < junctions.snapshotLength; i++ ){
+				var junction = junctions.snapshotItem(i);
+				var poslist = junction.getElementsByTagName("pos")[0].childNodes[0];
 				if(poslist != undefined){
 					var coordValues = poslist.nodeValue.split(' ');
 					var point = new ol.geom.Point([coordValues[0],coordValues[1]]);
 					point.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
 					var feature = new ol.Feature({
 					  geometry: point,
-					  id: junctions[i].attributes['nodeRef'].value,
-					  name: junctions[i].attributes['name'].value,
-					  label: junctions[i].attributes['name'].value,
-					  type: junctions[i].attributes['junctionType'].value,
+					  id: junction.attributes['nodeRef'].value,
+					  name: junction.attributes['name'].value,
+					  label: junction.attributes['name'].value,
+					  type: junction.attributes['junctionType'].value,
 					});
 					vector.getSource().addFeature(feature);
 				}
@@ -158,10 +168,10 @@
 		}
 		
 		function procesTracks(xmlDoc){
-			var tracks = xmlDoc.getElementsByTagName("Track");
-			console.log('tracks gevonden: '+tracks.length);
-			for(var i=0;i<tracks.length;i++){
-				var poslist = tracks[i].getElementsByTagName("posList")[0].childNodes[0];
+			var tracks = xmlDoc.evaluate('//ims:Track', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
+			for ( var i=0 ; i < tracks.snapshotLength; i++ ){
+				var track = tracks.snapshotItem(i);
+				var poslist = track.getElementsByTagName("posList")[0].childNodes[0];
 				if(poslist != undefined){
 					var coordinates = [];
 					var coordValues = poslist.nodeValue.split(' ');
@@ -172,11 +182,42 @@
 					line.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
 					var feature = new ol.Feature({
 					  geometry: line,
-					  id: tracks[i].attributes['edgeRef'].value,
-					  name: tracks[i].attributes['name'].value,
-					  label: tracks[i].attributes['name'].value
+					  id: track.attributes['edgeRef'].value,
+					  name: track.attributes['name'].value,
+					  label: track.attributes['name'].value
 					});
 					vector.getSource().addFeature(feature);
+				}
+			}
+		}
+		
+		function procesGeoSubcodeArea(xmlDoc){
+			var areas = xmlDoc.evaluate('//ims:GeoSubcodeArea', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
+			for ( var i=0 ; i < areas.snapshotLength; i++ ){
+				var area = areas.snapshotItem(i);
+				var exterior = area.getElementsByTagName("exterior")[0];
+				var poslist = exterior.getElementsByTagName("posList")[0].childNodes[0];
+				if(poslist != undefined){
+					var coordinates = [];
+					var coordValues = poslist.nodeValue.split(' ');
+					for(var j=0;j<coordValues.length;j+=2){
+						coordinates.push([coordValues[j],coordValues[j+1]]);
+					}
+					console.log('aantal coords: '+coordinates.length);
+					var coordList = [];
+					coordList.push(coordinates);
+					var poly = new ol.geom.Polygon(coordList);
+					poly.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
+					var feature = new ol.Feature({
+					  geometry: poly,
+					  id: area.attributes['puic'].value,
+					  name: area.attributes['name'].value,
+					  label: area.attributes['name'].value
+					});
+					vector.getSource().addFeature(feature);
+				}
+				else{
+					console.log('GeoSubcodeArea: geen postList');
 				}
 			}
 		}
