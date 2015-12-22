@@ -39,15 +39,23 @@
 				});
 			}
 			else if(ft == 'LineString'){
+				var stroke_color = 'blue';
+				if(feature.get('stroke_color') != undefined){
+					stroke_color = feature.get('stroke_color');
+				}
+				var text_color = 'blue';
+				if(feature.get('text_color') != undefined){
+					text_color = feature.get('text_color');
+				}
 				style = new ol.style.Style({
 					stroke: new ol.style.Stroke({
-					  color: 'blue',
+					  color: stroke_color,
 					  width: 4
 					}),
 					text: new ol.style.Text({
 						text: feature.get('label'),
-						fill: new ol.style.Fill({color: 'blue'}),
-						stroke: new ol.style.Stroke({color: 'blue', width: 1}),
+						fill: new ol.style.Fill({color: text_color}),
+						stroke: new ol.style.Stroke({color: text_color, width: 1}),
 						offsetX: 0,
 						offsetY: -5,
 					})
@@ -88,6 +96,7 @@
 			procesTracks(xmlDoc);
 			procesJunctions(xmlDoc);
 			procesGeoSubcodeArea(xmlDoc);
+			procesKilometerRibbons(xmlDoc);
 			fillLegend(xmlDoc);
 			map.render();
 			
@@ -108,19 +117,31 @@
 		};
 		
 		function fillLegend(xmlDoc){
-			var legend = document.getElementById("legend");
-			if(legend){
-				legend.appendChild(listItem('Knopen: '+ xpathCount(xmlDoc,'//ims:Node')));
-				legend.appendChild(listItem('Takken: '+ xpathCount(xmlDoc,'//ims:Edge')));
-				legend.appendChild(listItem('Wissels: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSwitch']")));
-				legend.appendChild(listItem('Stootjukken: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='bufferStop']")));
-				legend.appendChild(listItem('Engelse Wissels: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='fullSlipCrossing']")));
-				legend.appendChild(listItem('Half Engelse Wissels: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSlipCrossing']")));
-				legend.appendChild(listItem('Kruizen: '+xpathCount(xmlDoc,"//ims:Junction[@junctionType='crossing']")));
-				legend.appendChild(listItem('Secties: '+xpathCount(xmlDoc,"//ims:SectionDemarcation")));
-				legend.appendChild(listItem('Geocode subgebieden: '+xpathCount(xmlDoc,"//ims:GeoSubcodeArea")));
-			}
+			listItem(1,'Knopen: ', xpathCount(xmlDoc,'//ims:Node'));
+			listItem(2,'Takken: ', xpathCount(xmlDoc,'//ims:Edge'));
+			listItem(3,'Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSwitch']"));
+			listItem(4,'Stootjukken: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='bufferStop']"));
+			listItem(5,'Engelse Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='fullSlipCrossing']"));
+			listItem(6,'Half Engelse Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSlipCrossing']"));
+			listItem(7,'Kruizen: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='crossing']"));
+			listItem(8,'Secties: ',xpathCount(xmlDoc,"//ims:SectionDemarcation"));
+			listItem(9,'Geocode subgebieden: ',xpathCount(xmlDoc,"//ims:GeoSubcodeArea"));
+			listItem(10,'Kilometerlinten: ',xpathCount(xmlDoc,"//ims:KilometerRibbon"));
 		}
+		
+		function listItem(id, label, value){
+			var listItem = document.getElementById("legend_"+id);
+			if(listItem == undefined){
+				var legend = document.getElementById("legend");
+				listItem = document.createElement('p');
+				listItem.setAttribute('id', "legend_"+id);
+				legend.appendChild(listItem);
+				listItem.innerHTML = label+value;
+			}
+			else if(value > 0){
+				listItem.innerHTML = label+value;
+			}
+		}		
 		
 		function xpathCount(xmlDoc,expression){
 			var result = xmlDoc.evaluate('count('+expression+')', xmlDoc, nsResolver, XPathResult.ANY_TYPE,null);
@@ -140,11 +161,7 @@
 			return count;
 		}
 		
-		function listItem(text){
-			var listItem = document.createElement('p');
-			listItem.innerHTML = text;
-			return listItem;
-		}
+
 		
 		function procesJunctions(xmlDoc){
 			var junctions = xmlDoc.evaluate('//ims:Junction', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
@@ -185,6 +202,32 @@
 					  id: track.attributes['edgeRef'].value,
 					  name: track.attributes['name'].value,
 					  label: track.attributes['name'].value
+					});
+					vector.getSource().addFeature(feature);
+				}
+			}
+		}
+		
+		function procesKilometerRibbons(xmlDoc){
+			var ribbons = xmlDoc.evaluate('//ims:KilometerRibbon', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
+			for ( var i=0 ; i < ribbons.snapshotLength; i++ ){
+				var ribbon = ribbons.snapshotItem(i);
+				var poslist = ribbon.getElementsByTagName("posList")[0].childNodes[0];
+				if(poslist != undefined){
+					var coordinates = [];
+					var coordValues = poslist.nodeValue.split(' ');
+					for(var j=0;j<coordValues.length;j+=2){
+						coordinates.push([coordValues[j],coordValues[j+1]]);
+					}
+					var line = new ol.geom.LineString(coordinates);
+					line.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
+					var feature = new ol.Feature({
+					  geometry: line,
+					  text_color: 'black',
+					  stroke_color: 'black',
+					  id: ribbon.attributes['puic'].value,
+					  name: ribbon.attributes['name'].value,
+					  label: ribbon.attributes['name'].value
 					});
 					vector.getSource().addFeature(feature);
 				}
