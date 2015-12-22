@@ -95,6 +95,8 @@
 			var xmlDoc = parser.parseFromString(text,"text/xml");
 			procesTracks(xmlDoc);
 			procesJunctions(xmlDoc);
+			procesPassages(xmlDoc);
+			procesSignals(xmlDoc);
 			procesGeoSubcodeArea(xmlDoc);
 			procesKilometerRibbons(xmlDoc);
 			fillLegend(xmlDoc);
@@ -117,16 +119,18 @@
 		};
 		
 		function fillLegend(xmlDoc){
-			listItem(1,'Knopen: ', xpathCount(xmlDoc,'//ims:Node'));
-			listItem(2,'Takken: ', xpathCount(xmlDoc,'//ims:Edge'));
-			listItem(3,'Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSwitch']"));
-			listItem(4,'Stootjukken: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='bufferStop']"));
-			listItem(5,'Engelse Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='fullSlipCrossing']"));
-			listItem(6,'Half Engelse Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSlipCrossing']"));
-			listItem(7,'Kruizen: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='crossing']"));
-			listItem(8,'Secties: ',xpathCount(xmlDoc,"//ims:SectionDemarcation"));
-			listItem(9,'Geocode subgebieden: ',xpathCount(xmlDoc,"//ims:GeoSubcodeArea"));
-			listItem(10,'Kilometerlinten: ',xpathCount(xmlDoc,"//ims:KilometerRibbon"));
+			var id = 0;
+			listItem(id++,'Knopen: ', xpathCount(xmlDoc,'//ims:Node'));
+			listItem(id++,'Takken: ', xpathCount(xmlDoc,'//ims:Edge'));
+			listItem(id++,'Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSwitch']"));
+			listItem(id++,'Stootjukken: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='bufferStop']"));
+			listItem(id++,'Engelse Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='fullSlipCrossing']"));
+			listItem(id++,'Half Engelse Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSlipCrossing']"));
+			listItem(id++,'Kruizen: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='crossing']"));
+			listItem(id++,'Seinen: ',xpathCount(xmlDoc,"//ims:Signal"));
+			listItem(id++,'Secties: ',xpathCount(xmlDoc,"//ims:SectionDemarcation"));
+			listItem(id++,'Geocode subgebieden: ',xpathCount(xmlDoc,"//ims:GeoSubcodeArea"));
+			listItem(id++,'Kilometerlinten: ',xpathCount(xmlDoc,"//ims:KilometerRibbon"));
 		}
 		
 		function listItem(id, label, value){
@@ -161,8 +165,6 @@
 			return count;
 		}
 		
-
-		
 		function procesJunctions(xmlDoc){
 			var junctions = xmlDoc.evaluate('//ims:Junction', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < junctions.snapshotLength; i++ ){
@@ -178,6 +180,59 @@
 					  name: junction.attributes['name'].value,
 					  label: junction.attributes['name'].value,
 					  type: junction.attributes['junctionType'].value,
+					});
+					vector.getSource().addFeature(feature);
+				}
+			}
+		}
+		
+		function procesSignals(xmlDoc){
+			var signals = xmlDoc.evaluate('//ims:Signal', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
+			for ( var i=0 ; i < signals.snapshotLength; i++ ){
+				var signal = signals.snapshotItem(i);
+				var poslist = signal.getElementsByTagName("pos")[0].childNodes[0];
+				if(poslist != undefined){
+					var coordValues = poslist.nodeValue.split(' ');
+					var point = new ol.geom.Point([coordValues[0],coordValues[1]]);
+					point.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
+					var feature = new ol.Feature({
+					  geometry: point,
+					  id: signal.attributes['puic'].value,
+					  name: signal.attributes['name'].value,
+					  label: signal.attributes['name'].value,
+					  type: signal.attributes['signalType'].value,
+					});
+					vector.getSource().addFeature(feature);
+				}
+			}
+		}
+		
+		function procesPassages(xmlDoc){
+			var passages = xmlDoc.evaluate('//ims:Passage', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
+			for ( var i=0 ; i < passages.snapshotLength; i++ ){
+				var passage = passages.snapshotItem(i);
+				console.log('Passage: '+passage.attributes['jumperRef'].value);
+				var poslist = undefined;
+				if(passage.getElementsByTagName("posList").length > 0){
+					poslist = passage.getElementsByTagName("posList")[0].childNodes[0];
+					console.log('posList: '+poslist.nodeValue);
+				}
+				if(poslist != undefined){
+					console.log('adding');
+					var coordinates = [];
+					var coordValues = poslist.nodeValue.split(' ');
+					for(var j=0;j<coordValues.length;j+=2){
+						coordinates.push([coordValues[j],coordValues[j+1]]);
+					}
+					var line = new ol.geom.LineString(coordinates);
+					line.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
+					var feature = new ol.Feature({
+					  geometry: line,
+					  text_color: 'red',
+					  stroke_color: 'red',
+					  id: passage.attributes['jumperRef'].value,
+					  name: passage.attributes['name'].value,
+					  label: passage.attributes['name'].value
 					});
 					vector.getSource().addFeature(feature);
 				}
