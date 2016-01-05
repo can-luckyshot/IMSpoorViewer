@@ -1,4 +1,4 @@
-		var map,vector;
+		var map,vector,popup;
 		var image = new ol.style.Circle({
 			radius: 4,
 			stroke: new ol.style.Stroke({color: 'red', width: 5})
@@ -7,7 +7,6 @@
 		var styleFunction = function(feature, resolution) {
 			var ft = feature.getGeometry().getType();
 			var style;
-			console.log('style: '+ft);
 			if(ft == 'Point'){
 				style = new ol.style.Style({
 					image: image,
@@ -78,10 +77,17 @@
 			for (var i = 0, f; f = files[i]; i++) {
 			   var reader = new FileReader();
 			   reader.onload = 
-					function(event){
-						var text = event.target.result;
-						parseAndRenderIMX(text);
-					};
+					(function(file){
+						var fileName = file.name;
+						console.log('file: '+fileName);
+						return function(event){
+							var text = event.target.result;
+							var src = fileName;
+							var parser = new DOMParser();
+							var xmlDoc = parser.parseFromString(text,"text/xml");
+							parseAndRenderIMX(xmlDoc,src);
+						};
+					})(f);
 			   reader.onerror = function(event){
 					console.log('file-error: '+event.target.error.code);
 			   };
@@ -90,17 +96,16 @@
 			}
 		}
 		
-		function parseAndRenderIMX(text){
-			var parser = new DOMParser();
-			var xmlDoc = parser.parseFromString(text,"text/xml");
-			procesTracks(xmlDoc);
-			procesJunctions(xmlDoc);
-			procesPassages(xmlDoc);
-			procesSignals(xmlDoc);
-			procesGeoSubcodeArea(xmlDoc);
-			procesKilometerRibbons(xmlDoc);
+		function parseAndRenderIMX(xmlDoc,src){
+			procesTracks(xmlDoc,src);
+			procesJunctions(xmlDoc,src);
+			procesPassages(xmlDoc,src);
+			procesSignals(xmlDoc,src);
+			procesGeoSubcodeArea(xmlDoc,src);
+			procesKilometerRibbons(xmlDoc,src);
 			fillLegend(xmlDoc);
 			map.render();
+			zoomToIMX();
 			
 		}
 		
@@ -110,7 +115,7 @@
 				constrainResolution: false
 			}
 			var extent = vector.getSource().getExtent();
-			console.log('extent: ' + JSON.stringify(extent));
+			//console.log('extent: ' + JSON.stringify(extent));
 			map.getView().fit(extent,map.getSize(),options);
 		}
 		
@@ -140,11 +145,8 @@
 				listItem = document.createElement('p');
 				listItem.setAttribute('id', "legend_"+id);
 				legend.appendChild(listItem);
-				listItem.innerHTML = label+value;
 			}
-			else if(value > 0){
-				listItem.innerHTML = label+value;
-			}
+			listItem.innerHTML = label+value;
 		}		
 		
 		function xpathCount(xmlDoc,expression){
@@ -152,20 +154,7 @@
 			return result.numberValue;
 		}
 		
-		function count(xmlDoc,nodeName,attibute,type){
-			var count = 0;
-			var nodes = xmlDoc.getElementsByTagName(nodeName);
-			if(nodes){
-				for(var i=0;i<nodes.length;i++){
-					if(nodes[i].attributes[attibute].value == type){
-						count++;
-					}
-				}
-			}
-			return count;
-		}
-		
-		function procesJunctions(xmlDoc){
+		function procesJunctions(xmlDoc,src){
 			var junctions = xmlDoc.evaluate('//ims:Junction', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < junctions.snapshotLength; i++ ){
 				var junction = junctions.snapshotItem(i);
@@ -180,13 +169,14 @@
 					  name: junction.attributes['name'].value,
 					  label: junction.attributes['name'].value,
 					  type: junction.attributes['junctionType'].value,
+					  bron: src
 					});
 					vector.getSource().addFeature(feature);
 				}
 			}
 		}
 		
-		function procesSignals(xmlDoc){
+		function procesSignals(xmlDoc,src){
 			var signals = xmlDoc.evaluate('//ims:Signal', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < signals.snapshotLength; i++ ){
 				var signal = signals.snapshotItem(i);
@@ -201,24 +191,22 @@
 					  name: signal.attributes['name'].value,
 					  label: signal.attributes['name'].value,
 					  type: signal.attributes['signalType'].value,
+					  bron: src
 					});
 					vector.getSource().addFeature(feature);
 				}
 			}
 		}
 		
-		function procesPassages(xmlDoc){
+		function procesPassages(xmlDoc,src){
 			var passages = xmlDoc.evaluate('//ims:Passage', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < passages.snapshotLength; i++ ){
 				var passage = passages.snapshotItem(i);
-				console.log('Passage: '+passage.attributes['jumperRef'].value);
 				var poslist = undefined;
 				if(passage.getElementsByTagName("posList").length > 0){
 					poslist = passage.getElementsByTagName("posList")[0].childNodes[0];
-					console.log('posList: '+poslist.nodeValue);
 				}
 				if(poslist != undefined){
-					console.log('adding');
 					var coordinates = [];
 					var coordValues = poslist.nodeValue.split(' ');
 					for(var j=0;j<coordValues.length;j+=2){
@@ -232,14 +220,15 @@
 					  stroke_color: 'red',
 					  id: passage.attributes['jumperRef'].value,
 					  name: passage.attributes['name'].value,
-					  label: passage.attributes['name'].value
+					  label: passage.attributes['name'].value,
+					  bron: src
 					});
 					vector.getSource().addFeature(feature);
 				}
 			}
 		}
 		
-		function procesTracks(xmlDoc){
+		function procesTracks(xmlDoc,src){
 			var tracks = xmlDoc.evaluate('//ims:Track', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < tracks.snapshotLength; i++ ){
 				var track = tracks.snapshotItem(i);
@@ -256,14 +245,15 @@
 					  geometry: line,
 					  id: track.attributes['edgeRef'].value,
 					  name: track.attributes['name'].value,
-					  label: track.attributes['name'].value
+					  label: track.attributes['name'].value,
+					  bron: src
 					});
 					vector.getSource().addFeature(feature);
 				}
 			}
 		}
 		
-		function procesKilometerRibbons(xmlDoc){
+		function procesKilometerRibbons(xmlDoc,src){
 			var ribbons = xmlDoc.evaluate('//ims:KilometerRibbon', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < ribbons.snapshotLength; i++ ){
 				var ribbon = ribbons.snapshotItem(i);
@@ -282,14 +272,15 @@
 					  stroke_color: 'black',
 					  id: ribbon.attributes['puic'].value,
 					  name: ribbon.attributes['name'].value,
-					  label: ribbon.attributes['name'].value
+					  label: ribbon.attributes['name'].value,
+					  bron: src
 					});
 					vector.getSource().addFeature(feature);
 				}
 			}
 		}
 		
-		function procesGeoSubcodeArea(xmlDoc){
+		function procesGeoSubcodeArea(xmlDoc,src){
 			var areas = xmlDoc.evaluate('//ims:GeoSubcodeArea', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < areas.snapshotLength; i++ ){
 				var area = areas.snapshotItem(i);
@@ -301,7 +292,6 @@
 					for(var j=0;j<coordValues.length;j+=2){
 						coordinates.push([coordValues[j],coordValues[j+1]]);
 					}
-					console.log('aantal coords: '+coordinates.length);
 					var coordList = [];
 					coordList.push(coordinates);
 					var poly = new ol.geom.Polygon(coordList);
@@ -310,7 +300,8 @@
 					  geometry: poly,
 					  id: area.attributes['puic'].value,
 					  name: area.attributes['name'].value,
-					  label: area.attributes['name'].value
+					  label: area.attributes['name'].value,
+					  bron: src
 					});
 					vector.getSource().addFeature(feature);
 				}
@@ -356,7 +347,7 @@
 				})
 			});
 			var element = document.getElementById('popup');
-			var popup = new ol.Overlay({
+			popup = new ol.Overlay({
 			  element: element,
 			  positioning: 'bottom-center',
 			  stopEvent: false
@@ -364,38 +355,52 @@
 			map.addOverlay(popup);
 
 			// display popup on click
-			map.on('click', function(evt) {
-			  var feature = map.forEachFeatureAtPixel(evt.pixel,
+			map.on('click', handleClick);
+		}
+		
+		function handleClick(evt){
+			var feature = map.forEachFeatureAtPixel(evt.pixel,
 				  function(feature, layer) {
 					return feature;
 				  });
-			  if (feature) {
+			console.log('selected feature: '+feature);
+			if (feature) {
 				popup.setPosition(evt.coordinate);
-				$(element).popover({
+				var content = {
 				  'placement': 'top',
 				  'html': true,
 				  'content': getFeatureContent(feature)
-				});
+				};
+				var element = document.getElementById('popup');
+				$(element).popover(content);
 				$(element).popover('show');
-			  } else {
+			} 
+			else {
 				$(element).popover('destroy');
-			  }
-			});
+			}
 		}
 		
 		function getFeatureContent(feature){
 			if(feature.getGeometry().getType() == 'Point'){
-				var content = 'PUIC: '+feature.get('id') + '</br>'
-				content += 'Naam: '+feature.get('name') + '</br>' 
-				content += 'Type: '+feature.get('type');
+				var content = 'PUIC: '+feature.get('id') + '</br>';
+				content += 'Naam: '+feature.get('name') + '</br>';
+				content += 'Type: '+feature.get('type') + '</br>';
+				content += 'Bron: ' +feature.get('bron');
 				return content;
 			}
-			else{
-				var content = 'PUIC: '+feature.get('id') + '</br>'
-				content += 'Naam: '+feature.get('name') + '</br>'
-				var length = ''+feature.getGeometry().getLength()
+			else if(feature.getGeometry().getType() == 'LineString') {
+				var content = 'PUIC: '+feature.get('id') + '</br>';
+				content += 'Naam: '+feature.get('name') + '</br>';
+				var length = ''+feature.getGeometry().getLength();
 				length = length.split('.')[0];
-				content += 'Lengte: '+length+'m';
+				content += 'Lengte: '+length+'m</br>';
+				content += 'Bron: ' +feature.get('bron');
+				return content;
+			}
+			else if(feature.getGeometry().getType() == 'Polygon') {
+				var content = 'PUIC: '+feature.get('id') + '</br>';
+				content += 'Naam: '+feature.get('name') + '</br>';
+				content += 'Bron: ' +feature.get('bron');
 				return content;
 			}
 		}
