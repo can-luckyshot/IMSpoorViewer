@@ -127,11 +127,13 @@
 			var id = 0;
 			listItem(id++,'Knopen: ', xpathCount(xmlDoc,'//ims:Node'));
 			listItem(id++,'Takken: ', xpathCount(xmlDoc,'//ims:Edge'));
-			listItem(id++,'Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSwitch']"));
-			listItem(id++,'Stootjukken: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='bufferStop']"));
-			listItem(id++,'Engelse Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='fullSlipCrossing']"));
-			listItem(id++,'Half Engelse Wissels: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='singleSlipCrossing']"));
-			listItem(id++,'Kruizen: ',xpathCount(xmlDoc,"//ims:Junction[@junctionType='crossing']"));
+			listItem(id++,'Wissels: ',xpathCount(xmlDoc,"//ims:SingleSwitch"));
+			listItem(id++,'Stootjukken: ',xpathCount(xmlDoc,"//ims:BufferStop"));
+			listItem(id++,'Engelse Wissels: ',xpathCount(xmlDoc,"//ims:FullSlip"));
+			listItem(id++,'Half Engelse Wissels: ',xpathCount(xmlDoc,"//ims:SingleSlip"));
+			listItem(id++,'Kruizen: ',xpathCount(xmlDoc,"//ims:Crossing"));
+			listItem(id++,'Terra Incognita: ',xpathCount(xmlDoc,"//ims:RealmEnd"));
+			listItem(id++,'Einde Spoor: ',xpathCount(xmlDoc,"//ims:TrackEnd"));
 			listItem(id++,'Seinen: ',xpathCount(xmlDoc,"//ims:Signal"));
 			listItem(id++,'Secties: ',xpathCount(xmlDoc,"//ims:SectionDemarcation"));
 			listItem(id++,'Geocode subgebieden: ',xpathCount(xmlDoc,"//ims:GeoSubcodeArea"));
@@ -155,20 +157,20 @@
 		}
 		
 		function procesJunctions(xmlDoc,src){
-			var junctions = xmlDoc.evaluate('//ims:Junction', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
+			var junctions = xmlDoc.evaluate('//ims:Junctions/child::*', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < junctions.snapshotLength; i++ ){
 				var junction = junctions.snapshotItem(i);
-				var poslist = junction.getElementsByTagName("pos")[0].childNodes[0];
+				var poslist = junction.getElementsByTagName("coordinates")[0].childNodes[0];
 				if(poslist != undefined){
-					var coordValues = poslist.nodeValue.split(' ');
+					var coordValues = poslist.nodeValue.replace(/,/g, " ").split(' ');
 					var point = new ol.geom.Point([coordValues[0],coordValues[1]]);
 					point.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
 					var feature = new ol.Feature({
 					  geometry: point,
-					  id: junction.attributes['nodeRef'].value,
+					  id: junction.attributes['puic'].value,
 					  name: junction.attributes['name'].value,
 					  label: junction.attributes['name'].value,
-					  type: junction.attributes['junctionType'].value,
+					  type: junction.nodeName,
 					  bron: src
 					});
 					vector.getSource().addFeature(feature);
@@ -180,9 +182,9 @@
 			var signals = xmlDoc.evaluate('//ims:Signal', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < signals.snapshotLength; i++ ){
 				var signal = signals.snapshotItem(i);
-				var poslist = signal.getElementsByTagName("pos")[0].childNodes[0];
+				var poslist = signal.getElementsByTagName("coordinates")[0].childNodes[0];
 				if(poslist != undefined){
-					var coordValues = poslist.nodeValue.split(' ');
+					var coordValues = poslist.nodeValue.replace(/,/g, " ").split(' ');
 					var point = new ol.geom.Point([coordValues[0],coordValues[1]]);
 					point.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
 					var feature = new ol.Feature({
@@ -203,12 +205,12 @@
 			for ( var i=0 ; i < passages.snapshotLength; i++ ){
 				var passage = passages.snapshotItem(i);
 				var poslist = undefined;
-				if(passage.getElementsByTagName("posList").length > 0){
-					poslist = passage.getElementsByTagName("posList")[0].childNodes[0];
+				if(passage.getElementsByTagName("coordinates").length > 0){
+					poslist = passage.getElementsByTagName("coordinates")[0].childNodes[0];
 				}
 				if(poslist != undefined){
 					var coordinates = [];
-					var coordValues = poslist.nodeValue.split(' ');
+					var coordValues = poslist.nodeValue.replace(/,/g, " ").split(' ');
 					for(var j=0;j<coordValues.length;j+=2){
 						coordinates.push([coordValues[j],coordValues[j+1]]);
 					}
@@ -218,7 +220,7 @@
 					  geometry: line,
 					  text_color: 'red',
 					  stroke_color: 'red',
-					  id: passage.attributes['jumperRef'].value,
+					  id: passage.attributes['puic'].value,
 					  name: passage.attributes['name'].value,
 					  label: passage.attributes['name'].value,
 					  bron: src
@@ -232,10 +234,10 @@
 			var tracks = xmlDoc.evaluate('//ims:Track', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < tracks.snapshotLength; i++ ){
 				var track = tracks.snapshotItem(i);
-				var poslist = track.getElementsByTagName("posList")[0].childNodes[0];
+				var poslist = track.getElementsByTagName("coordinates")[0].childNodes[0];
 				if(poslist != undefined){
 					var coordinates = [];
-					var coordValues = poslist.nodeValue.split(' ');
+					var coordValues = poslist.nodeValue.replace(/,/g, " ").split(' ');
 					for(var j=0;j<coordValues.length;j+=2){
 						coordinates.push([coordValues[j],coordValues[j+1]]);
 					}
@@ -243,7 +245,7 @@
 					line.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
 					var feature = new ol.Feature({
 					  geometry: line,
-					  id: track.attributes['edgeRef'].value,
+					  id: track.attributes['puic'].value,
 					  name: track.attributes['name'].value,
 					  label: track.attributes['name'].value,
 					  bron: src
@@ -257,10 +259,10 @@
 			var ribbons = xmlDoc.evaluate('//ims:KilometerRibbon', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < ribbons.snapshotLength; i++ ){
 				var ribbon = ribbons.snapshotItem(i);
-				var poslist = ribbon.getElementsByTagName("posList")[0].childNodes[0];
+				var poslist = ribbon.getElementsByTagName("coordinates")[0].childNodes[0];
 				if(poslist != undefined){
 					var coordinates = [];
-					var coordValues = poslist.nodeValue.split(' ');
+					var coordValues = poslist.nodeValue.replace(/,/g, " ").split(' ');
 					for(var j=0;j<coordValues.length;j+=2){
 						coordinates.push([coordValues[j],coordValues[j+1]]);
 					}
@@ -284,11 +286,11 @@
 			var areas = xmlDoc.evaluate('//ims:GeoSubcodeArea', xmlDoc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,null);
 			for ( var i=0 ; i < areas.snapshotLength; i++ ){
 				var area = areas.snapshotItem(i);
-				var exterior = area.getElementsByTagName("exterior")[0];
-				var poslist = exterior.getElementsByTagName("posList")[0].childNodes[0];
+				// var exterior = area.getElementsByTagName("exterior")[0];
+				var poslist = area.getElementsByTagName("coordinates")[0].childNodes[0];
 				if(poslist != undefined){
 					var coordinates = [];
-					var coordValues = poslist.nodeValue.split(' ');
+					var coordValues = poslist.nodeValue.replace(/,/g, " ").split(' ');
 					for(var j=0;j<coordValues.length;j+=2){
 						coordinates.push([coordValues[j],coordValues[j+1]]);
 					}
