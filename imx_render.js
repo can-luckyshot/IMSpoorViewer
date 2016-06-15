@@ -210,9 +210,10 @@
 				}
 				if(poslist != undefined){
 					var coordinates = [];
-					var coordValues = poslist.nodeValue.replace(/,/g, " ").split(' ');
-					for(var j=0;j<coordValues.length;j+=2){
-						coordinates.push([coordValues[j],coordValues[j+1]]);
+					var points = poslist.nodeValue.split(' ');
+					for(var j=0;j<points.length;j+=2){
+						coords = points[j].split(',');
+						coordinates.push([coords[0],coords[1]]);
 					}
 					var line = new ol.geom.LineString(coordinates);
 					line.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
@@ -237,9 +238,10 @@
 				var poslist = track.getElementsByTagName("coordinates")[0].childNodes[0];
 				if(poslist != undefined){
 					var coordinates = [];
-					var coordValues = poslist.nodeValue.replace(/,/g, " ").split(' ');
-					for(var j=0;j<coordValues.length;j+=2){
-						coordinates.push([coordValues[j],coordValues[j+1]]);
+					var points = poslist.nodeValue.split(' ');
+					for(var j=0;j<points.length;j+=2){
+						coords = points[j].split(',');
+						coordinates.push([coords[0],coords[1]]);
 					}
 					var line = new ol.geom.LineString(coordinates);
 					line.transform(ol.proj.get("EPSG:28992"),map.getView().getProjection());
