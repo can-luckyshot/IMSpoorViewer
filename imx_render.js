@@ -11,7 +11,7 @@ function handleFileSelect(evt) {
 		reader.onload =
 			(function (file) {
 			var fileName = file.name;
-			console.log('file: ' + fileName);
+			console.log('file hallo: ' + fileName);
 			return function (event) {
 				var text = event.target.result;
 				var src = fileName;
@@ -71,6 +71,11 @@ function initMap() {
 
 function parseAndRenderIMX(xmlDoc, src) {
 	var objectsWithGeom = $(xmlDoc).find('Geometry').parent();
+	console.log('objectsWithGeom: '+objectsWithGeom.length);
+	if(objectsWithGeom.length == 0){
+		console.log('Geen Geometry tags gevonden');
+		objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
+	}
 	var typeMap = new Object();
 
 	objectsWithGeom.each(function (index, objectWithGeom) {
@@ -91,7 +96,8 @@ function buildTypeLayers(typeMap) {
 		var color = getColor(i++);
 		makeLegendItem(type, color, renderableObjects.length);
 		console.log(type + ' ' + renderableObjects.length + ' items');
-		var geom = $(renderableObjects[0]).children('geometry').children()[0];
+		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
+		var geom = location.children[0];
 		if (geom.nodeName == 'gml:LineString') {
 			createLineStringLayer(type,color,renderableObjects)
 		}
@@ -116,7 +122,7 @@ function getColor(index) {
 function createPointLayer(title, color, items) {
 	$.each(items, function (index, item) {
 		var $item = $(item);
-		var poslist = $item.find('Geometry').text().trim();
+		var poslist = $item.find('GeographicLocation').text().trim();
 		if (poslist != undefined) {
 			var coordValues = poslist.replace(',', ' ').split(' ');
 			var point = new ol.geom.Point([coordValues[0], coordValues[1]]);
@@ -136,13 +142,14 @@ function createPointLayer(title, color, items) {
 function createLineStringLayer(title, color, items) {
 	$.each(items, function (index, item) {
 		var $item = $(item);
-		var poslist = $item.find('Geometry').text().trim();
+		var poslist = $item.find('GeographicLocation').text().trim();
 		
 		if (poslist != undefined) {
 			var coordinates = [];
 			var points = poslist.split(' ');
-			for (var j = 0; j < points.length; j += 2) {
-				coordinates.push([points[j], points[j+1]]);
+			for (var j = 0; j < points.length; j++) {
+				var values = points[j].split(',')
+				coordinates.push([values[0], values[1]]);
 			}
 			var line = new ol.geom.LineString(coordinates);
 			line.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
