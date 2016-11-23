@@ -111,8 +111,6 @@
 					iconClass = 'fa fa-globe';
 				}
 				var html = '<i class="'+iconClass+'"></i>'+lyr.get('title');
-				console.log(lyr.get('title'));
-				console.log(lyr);
 				if(lyr instanceof ol.layer.Vector){
 					html += '<span class="badge">'+lyr.getSource().getFeatures().length+'</span>';
 				}

@@ -84,7 +84,7 @@ function initMap() {
 }
 
 function loadDemoFile() {
-	$.get('/file.xml', function (data) {
+	$.get('file.xml', function (data) {
 		parseAndRenderIMX(data, 'file.xml');
 	});
 }
