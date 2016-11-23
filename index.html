@@ -49,11 +49,9 @@
 
 	  }
 	  #tableContent{
-		height: 900px;
 		overflow-y: scroll;
 	  }
-	  #tableLegend{
-		height: 900px;
+	  #myScrollspy{
 		overflow-y: scroll;
       }
 		</style>
@@ -64,6 +62,7 @@
 		<script src="imx_render.js" type="text/javascript"></script>
 		<script src="tableBuilder.js" type="text/javascript"></script>
 		<script type="text/javascript">
+		
       function applyMargins() {
         var leftToggler = $(".mini-submenu-left");
         if (leftToggler.is(":visible")) {
@@ -77,6 +76,9 @@
             .removeClass("zoom-top-opened-sidebar")
             .removeClass("zoom-top-collapsed");
         }
+		var html = document.documentElement;
+		$('#myScrollspy').height(html.clientHeight-50);
+		$('#tableContent').height(html.clientHeight-50);
       }
       function isConstrained() {
         return $(".sidebar").width() == $(window).width();
@@ -227,7 +229,7 @@
 									<ul class="nav nav-pills nav-stacked" id="tableLegend">
 									</ul>
 								</nav>
-								<div class="col-sm-10" id="tableContent" data-spy="scroll" data-target="#myScrollspy">
+								<div class="col-sm-10" id="tableContent" data-spy="scroll" data-target="#myScrollspy" data-offset="20" >
 								</div>
 							</div>
 						</div>
