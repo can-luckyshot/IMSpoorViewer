@@ -107,14 +107,18 @@ function parseAndRenderIMX(xmlDoc, src) {
 	});
 	buildTypeLayers(typeMap);
 	buildDataTables(typeMap);
+	buildGraph();
 	updateLayerSwitcher();
+}
+
+function buildGraph(){
+	
 }
 
 function buildTypeLayers(typeMap) {
 	var i = 0;
 	$.each(typeMap, function (type, renderableObjects) {
 		var color = getColor(i++);
-		makeLegendItem(type, color, renderableObjects.length);
 		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
 		var geom = location.children[0];
@@ -253,22 +257,6 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 		})
 	});
 	polygonLayers.getLayers().push(vectorLayer);
-}
-
-function makeLegendItem(key, color, size) {
-	var legend = document.getElementById("legend");
-	var item = $('<div>');
-	var myDiv = $('<div>');
-	myDiv.css({
-		"backgroundColor": color,
-		"float": "left",
-		"marginRight": "3px",
-		"border": "1 px solid #000000"
-	}).width(15).height(15);
-	item.append(myDiv);
-	item.append($('<div>').text(key + ' (' + size + ')'));
-	$(legend).append(item);
-
 }
 
 var nsResolver = function (element) {
