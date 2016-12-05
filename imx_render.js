@@ -81,6 +81,41 @@ function initMap() {
 				zoom: 8
 			})
 		});
+	var popup = new ol.Overlay({
+			element: document.getElementById('popup')
+		});
+	map.addOverlay(popup);
+	map.on('singleclick', function (evt) {
+		var element = document.getElementById('popup');
+		console.log(evt);
+		var pixel = map.getPixelFromCoordinate(evt.coordinate);
+		var features = [];
+		map.forEachFeatureAtPixel(pixel, function (feature) {
+			if (feature.get('imxType') && feature.get('geometry').getType() !== 'Polygon') {
+				features.push(feature);
+			}
+		});
+		if (features.length > 0) {
+			var info = [];
+			var i,
+			ii;
+			for (i = 0, ii = features.length; i < ii; ++i) {
+				var f = features[i];
+				info.push(f.get('imxType') + ': ' + f.get('name') + '<br/>');
+			}
+			$(element).popover('destroy');
+			popup.setPosition(evt.coordinate);
+
+			$(element).popover({
+				'placement': 'top',
+				'html': true,
+				'content': info
+			});
+			$(element).popover('show');
+		} else {
+			$(element).popover('destroy');
+		}
+	});
 }
 
 function loadDemoFile() {
@@ -111,9 +146,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 	updateLayerSwitcher();
 }
 
-function buildGraph(){
-	
-}
+function buildGraph() {}
 
 function buildTypeLayers(typeMap) {
 	var i = 0;
@@ -164,12 +197,22 @@ function createPointLayer(title, color, items, vectorLayer) {
 					id: $item.attr('puic'),
 					name: $item.attr('name'),
 					label: $item.attr('name'),
+					imxType: title,
 					color: color
 				});
+			addAttributes(feature,item);	
 			vectorLayer.getSource().addFeature(feature);
 		}
 	});
 	pointLayers.getLayers().push(vectorLayer);
+}
+
+function addAttributes(feature,item){
+	$.each(item.attributes, function(name,value) {
+		if(name !== 'name' && name !== 'puic'){
+			feature[name] = value;
+		}
+	});
 }
 
 function createLineStringLayer(title, color, items, vectorLayer) {
@@ -191,6 +234,7 @@ function createLineStringLayer(title, color, items, vectorLayer) {
 					id: $item.attr('puic'),
 					name: $item.attr('name'),
 					label: $item.attr('name'),
+					imxType: title,
 					text_color: color,
 					stroke_color: color
 				});
@@ -219,6 +263,7 @@ function createPolygonLayer(title, color, items, vectorLayer) {
 					id: $item.attr('puic'),
 					name: $item.attr('name'),
 					label: $item.attr('name'),
+					imxType: title,
 					text_color: color,
 					stroke_color: color
 				});
@@ -249,6 +294,7 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 						id: $item.attr('puic'),
 						name: $item.attr('name'),
 						label: $item.attr('name'),
+						imxType: title,
 						text_color: color,
 						stroke_color: color
 					});
