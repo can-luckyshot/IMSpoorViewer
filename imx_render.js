@@ -13,11 +13,10 @@ function handleFileSelect(evt) {
 			var fileName = file.name;
 			console.log('file hallo: ' + fileName);
 			return function (event) {
-				console.log('onload: ' + fileName);
-				console.log('onload: ' + event.target.result.length);
+				var text = event.target.result;
 				var src = fileName;
 				var parser = new DOMParser();
-				var xmlDoc = parser.parseFromString(event.target.result, "text/xml");
+				var xmlDoc = parser.parseFromString(text, "text/xml");
 				parseAndRenderIMX(xmlDoc, src);
 			};
 		})(f);
@@ -46,8 +45,8 @@ var lineLayers = makeGroup('Lijn-Objecten');
 var polygonLayers = makeGroup('Gebieden');
 var baseLayers = makeGroup('Ondergrond');
 var overlayGroup = new ol.layer.Group({
-		title : 'IMX Objecten',
-		layers : [
+		title: 'IMX Objecten',
+		layers: [
 			baseLayers,
 			polygonLayers,
 			lineLayers,
@@ -58,8 +57,8 @@ var overlayGroup = new ol.layer.Group({
 
 function makeGroup(title) {
 	var group = new ol.layer.Group({
-			title : title,
-			layers : [
+			title: title,
+			layers: [
 			]
 		});
 	return group;
@@ -69,19 +68,54 @@ function initMap() {
 	console.log('initMap');
 	proj4.defs("EPSG:28992", "+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.040,49.910,465.840,-0.40939,0.35971,-1.86849,4.0772");
 	var tile = new ol.layer.Tile({
-			'title' : 'Open Street Map',
-			source : new ol.source.OSM()
+			'title': 'Open Street Map',
+			source: new ol.source.OSM()
 		});
 	baseLayers.getLayers().push(tile);
 	map = new ol.Map({
-			target : 'map',
-			'title' : 'Base map',
-			layers : [overlayGroup],
-			view : new ol.View({
-				center : ol.proj.fromLonLat([5.3, 52.23]),
-				zoom : 8
+			target: 'map',
+			'title': 'Base map',
+			layers: [overlayGroup],
+			view: new ol.View({
+				center: ol.proj.fromLonLat([5.3, 52.23]),
+				zoom: 8
 			})
 		});
+	var popup = new ol.Overlay({
+			element: document.getElementById('popup')
+		});
+	map.addOverlay(popup);
+	map.on('singleclick', function (evt) {
+		var element = document.getElementById('popup');
+		console.log(evt);
+		var pixel = map.getPixelFromCoordinate(evt.coordinate);
+		var features = [];
+		map.forEachFeatureAtPixel(pixel, function (feature) {
+			if (feature.get('imxType') && feature.get('geometry').getType() !== 'Polygon') {
+				features.push(feature);
+			}
+		});
+		if (features.length > 0) {
+			var info = [];
+			var i,
+			ii;
+			for (i = 0, ii = features.length; i < ii; ++i) {
+				var f = features[i];
+				info.push(f.get('imxType') + ': ' + f.get('name') + '<br/>');
+			}
+			$(element).popover('destroy');
+			popup.setPosition(evt.coordinate);
+
+			$(element).popover({
+				'placement': 'top',
+				'html': true,
+				'content': info
+			});
+			$(element).popover('show');
+		} else {
+			$(element).popover('destroy');
+		}
+	});
 }
 
 function loadDemoFile() {
@@ -91,7 +125,6 @@ function loadDemoFile() {
 }
 
 function parseAndRenderIMX(xmlDoc, src) {
-	console.log('parseAndRenderIMX: buildTypemap');
 	var objectsWithGeom = $(xmlDoc).find('Geometry').parent();
 	if (objectsWithGeom.length == 0) {
 		objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
@@ -107,10 +140,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 		}
 		list.push(objectWithGeom);
 	});
-	console.log('parseAndRenderIMX: done');
-	console.log('parseAndRenderIMX: buildTypeLayers');
 	buildTypeLayers(typeMap);
-	console.log('parseAndRenderIMX: buildDataTables');
 	buildDataTables(typeMap);
 	buildGraph();
 	updateLayerSwitcher();
@@ -126,9 +156,9 @@ function buildTypeLayers(typeMap) {
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
 		var geom = location.children[0];
 		var vectorLayer = new ol.layer.Vector({
-				'title' : type,
-				style : styleFunction,
-				source : new ol.source.Vector({})
+				'title': type,
+				style: styleFunction,
+				source: new ol.source.Vector({})
 			});
 		if (geom.nodeName == 'gml:LineString') {
 			createLineStringLayer(type, color, renderableObjects, vectorLayer)
@@ -163,16 +193,26 @@ function createPointLayer(title, color, items, vectorLayer) {
 			var point = new ol.geom.Point([coordValues[0], coordValues[1]]);
 			point.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 			var feature = new ol.Feature({
-					geometry : point,
-					id : $item.attr('puic'),
-					name : $item.attr('name'),
-					label : $item.attr('name'),
-					color : color
+					geometry: point,
+					id: $item.attr('puic'),
+					name: $item.attr('name'),
+					label: $item.attr('name'),
+					imxType: title,
+					color: color
 				});
+			addAttributes(feature,item);	
 			vectorLayer.getSource().addFeature(feature);
 		}
 	});
 	pointLayers.getLayers().push(vectorLayer);
+}
+
+function addAttributes(feature,item){
+	$.each(item.attributes, function(name,value) {
+		if(name !== 'name' && name !== 'puic'){
+			feature[name] = value;
+		}
+	});
 }
 
 function createLineStringLayer(title, color, items, vectorLayer) {
@@ -190,12 +230,13 @@ function createLineStringLayer(title, color, items, vectorLayer) {
 			var line = new ol.geom.LineString(coordinates);
 			line.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 			var feature = new ol.Feature({
-					geometry : line,
-					id : $item.attr('puic'),
-					name : $item.attr('name'),
-					label : $item.attr('name'),
-					text_color : color,
-					stroke_color : color
+					geometry: line,
+					id: $item.attr('puic'),
+					name: $item.attr('name'),
+					label: $item.attr('name'),
+					imxType: title,
+					text_color: color,
+					stroke_color: color
 				});
 			vectorLayer.getSource().addFeature(feature);
 		}
@@ -218,12 +259,13 @@ function createPolygonLayer(title, color, items, vectorLayer) {
 			var poly = new ol.geom.Polygon([coordinates]);
 			poly.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 			var feature = new ol.Feature({
-					geometry : poly,
-					id : $item.attr('puic'),
-					name : $item.attr('name'),
-					label : $item.attr('name'),
-					text_color : color,
-					stroke_color : color
+					geometry: poly,
+					id: $item.attr('puic'),
+					name: $item.attr('name'),
+					label: $item.attr('name'),
+					imxType: title,
+					text_color: color,
+					stroke_color: color
 				});
 			vectorLayer.getSource().addFeature(feature);
 		}
@@ -248,12 +290,13 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 				var polygon = new ol.geom.Polygon([coordinates]);
 				polygon.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 				var feature = new ol.Feature({
-						geometry : polygon,
-						id : $item.attr('puic'),
-						name : $item.attr('name'),
-						label : $item.attr('name'),
-						text_color : color,
-						stroke_color : color
+						geometry: polygon,
+						id: $item.attr('puic'),
+						name: $item.attr('name'),
+						label: $item.attr('name'),
+						imxType: title,
+						text_color: color,
+						stroke_color: color
 					});
 				vectorLayer.getSource().addFeature(feature);
 			}
@@ -271,60 +314,60 @@ var styleFunction = function (feature, resolution) {
 	var style;
 	if (ft == 'Point') {
 		style = new ol.style.Style({
-				image : new ol.style.Circle({
-					radius : 4,
-					fill : new ol.style.Fill({
-						color : feature.get('color')
+				image: new ol.style.Circle({
+					radius: 4,
+					fill: new ol.style.Fill({
+						color: feature.get('color')
 					})
 				}),
-				text : new ol.style.Text({
-					text : feature.get('label'),
-					fill : new ol.style.Fill({
-						color : feature.get('color')
+				text: new ol.style.Text({
+					text: feature.get('label'),
+					fill: new ol.style.Fill({
+						color: feature.get('color')
 					}),
-					offsetX : 0,
-					offsetY : -10,
+					offsetX: 0,
+					offsetY: -10,
 				})
 			});
 	} else if (ft == 'Polygon') {
 		style = new ol.style.Style({
-				stroke : new ol.style.Stroke({
-					color : feature.get('stroke_color'),
-					width : 1
+				stroke: new ol.style.Stroke({
+					color: feature.get('stroke_color'),
+					width: 1
 				}),
-				fill : new ol.style.Fill({
-					color : feature.get('stroke_color').replace('hsl', 'hsla').replace(')', ',0.1)')
+				fill: new ol.style.Fill({
+					color: feature.get('stroke_color').replace('hsl', 'hsla').replace(')', ',0.1)')
 				}),
-				text : new ol.style.Text({
-					text : feature.get('label'),
-					fill : new ol.style.Fill({
-						color : feature.get('stroke_color')
+				text: new ol.style.Text({
+					text: feature.get('label'),
+					fill: new ol.style.Fill({
+						color: feature.get('stroke_color')
 					}),
-					stroke : new ol.style.Stroke({
-						color : feature.get('stroke_color'),
-						width : 1
+					stroke: new ol.style.Stroke({
+						color: feature.get('stroke_color'),
+						width: 1
 					}),
-					offsetX : 0,
-					offsetY : 0,
+					offsetX: 0,
+					offsetY: 0,
 				})
 			});
 	} else if (ft == 'LineString') {
 		style = new ol.style.Style({
-				stroke : new ol.style.Stroke({
-					color : feature.get('stroke_color'),
-					width : 2
+				stroke: new ol.style.Stroke({
+					color: feature.get('stroke_color'),
+					width: 2
 				}),
-				text : new ol.style.Text({
-					text : feature.get('label'),
-					fill : new ol.style.Fill({
-						color : feature.get('text_color')
+				text: new ol.style.Text({
+					text: feature.get('label'),
+					fill: new ol.style.Fill({
+						color: feature.get('text_color')
 					}),
-					stroke : new ol.style.Stroke({
-						color : feature.get('text_color'),
-						width : 1
+					stroke: new ol.style.Stroke({
+						color: feature.get('text_color'),
+						width: 1
 					}),
-					offsetX : 0,
-					offsetY : -5,
+					offsetX: 0,
+					offsetY: -5,
 				})
 			});
 	} else {

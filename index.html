@@ -51,11 +51,14 @@
 	  #tableContent{
 		overflow-y: scroll;
 	  }
+	  .popover-content {
+        min-width: 180px;
+      }
 	  #myScrollspy{
 		overflow-y: scroll;
       }
 			</style>
-			<script type="text/javascript" src="http://openlayers.org/en/v3.16.0/build/ol.js"></script>
+			<script type="text/javascript" src="http://openlayers.org/en/v3.19.1/build/ol.js"></script>
 			<script type="text/javascript" src="//code.jquery.com/jquery-2.1.1.min.js"></script>
 			<script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 			<script src="proj4.js" type="text/javascript"></script>
@@ -103,6 +106,10 @@
 						<div class="tab-content">
 							<div id="mapviewer" class="tab-pane fade in active">
 								<div id="map"></div>
+								<!-- popover -->
+								<div style="display: none;">
+									<div id="popup" title="Selected Features"></div>
+								</div>
 								<div class="row main-row">
 									<div class="col-sm-3 col-md-3 sidebar sidebar-left pull-left ">
 										<div class="panel-group sidebar-body " id="accordion-left">
