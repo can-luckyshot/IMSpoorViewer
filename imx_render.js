@@ -276,7 +276,6 @@ function createPolygonLayer(title, color, items, vectorLayer) {
 }
 
 function createMultiPolygonLayer(title, color, items, vectorLayer) {
-	//console.log('multipolygons: ' + title + ' itemCount: ' + items.length);
 	$.each(items, function (index, item) {
 		var $item = $(item);
 		var polys = $item.find('Polygon');
@@ -308,15 +307,12 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 }
 
 function createMultiLineStringLayer(title, color, items, vectorLayer) {
-	console.log('multiLineString: ' + title + ' itemCount: ' + items.length);
 	$.each(items, function (index, item) {
 		var $item = $(item);
 		var lines = $item.find('LineString');
-		console.log('lines found: '+lines.length);
 		var lineGeoms = [];
 		$.each(lines, function (index, line) {
 			var poslist = $(line).text().trim();
-			console.log('coords: '+poslist);
 			if (poslist != undefined) {
 				var coordinates = [];
 				var points = poslist.split(' ');
