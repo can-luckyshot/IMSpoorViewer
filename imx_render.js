@@ -168,6 +168,8 @@ function buildTypeLayers(typeMap) {
 			createPolygonLayer(type, color, renderableObjects, vectorLayer);
 		} else if (geom.nodeName == 'gml:MultiPolygon') {
 			createMultiPolygonLayer(type, color, renderableObjects, vectorLayer);
+		} else if (geom.nodeName == 'gml:MultiLineString') {
+			createMultiLineStringLayer(type, color, renderableObjects, vectorLayer);
 		} else {
 			//console.log('onbekend: ' + geom.tagName);
 		}
@@ -200,16 +202,16 @@ function createPointLayer(title, color, items, vectorLayer) {
 					imxType: title,
 					color: color
 				});
-			addAttributes(feature,item);	
+			addAttributes(feature, item);
 			vectorLayer.getSource().addFeature(feature);
 		}
 	});
 	pointLayers.getLayers().push(vectorLayer);
 }
 
-function addAttributes(feature,item){
-	$.each(item.attributes, function(name,value) {
-		if(name !== 'name' && name !== 'puic'){
+function addAttributes(feature, item) {
+	$.each(item.attributes, function (name, value) {
+		if (name !== 'name' && name !== 'puic') {
 			feature[name] = value;
 		}
 	});
@@ -305,6 +307,42 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 	polygonLayers.getLayers().push(vectorLayer);
 }
 
+function createMultiLineStringLayer(title, color, items, vectorLayer) {
+	console.log('multiLineString: ' + title + ' itemCount: ' + items.length);
+	$.each(items, function (index, item) {
+		var $item = $(item);
+		var lines = $item.find('LineString');
+		console.log('lines found: '+lines.length);
+		var lineGeoms = [];
+		$.each(lines, function (index, line) {
+			var poslist = $(line).text().trim();
+			console.log('coords: '+poslist);
+			if (poslist != undefined) {
+				var coordinates = [];
+				var points = poslist.split(' ');
+				for (var j = 0; j < points.length; j++) {
+					var values = points[j].split(',');
+					coordinates.push([values[0], values[1]]);
+				}
+				lineGeoms.push(coordinates);
+			}
+		});
+		var polygon = new ol.geom.MultiLineString(lineGeoms);
+				polygon.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+				var feature = new ol.Feature({
+						geometry: polygon,
+						id: $item.attr('puic'),
+						name: $item.attr('name'),
+						label: $item.attr('name'),
+						imxType: title,
+						text_color: color,
+						stroke_color: color
+					});
+				vectorLayer.getSource().addFeature(feature);
+	});
+	lineLayers.getLayers().push(vectorLayer);
+}
+
 var nsResolver = function (element) {
 	return 'http://www.prorail.nl/IMSpoor';
 };
@@ -351,7 +389,7 @@ var styleFunction = function (feature, resolution) {
 					offsetY: 0,
 				})
 			});
-	} else if (ft == 'LineString') {
+	} else if (ft == 'LineString' || ft == 'MultiLineString') {
 		style = new ol.style.Style({
 				stroke: new ol.style.Stroke({
 					color: feature.get('stroke_color'),
