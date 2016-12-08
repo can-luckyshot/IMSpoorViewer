@@ -40,18 +40,18 @@ function initDragAndDrop() {
 	dropZone.addEventListener('drop', handleFileSelect, false);
 	// setup projectie
 }
+// global for popup
+var popup;
 var pointLayers = makeGroup('Punt-Objecten');
 var lineLayers = makeGroup('Lijn-Objecten');
 var polygonLayers = makeGroup('Gebieden');
 var baseLayers = makeGroup('Ondergrond');
-var overlayGroup = new ol.layer.Group({
+var vectorLayers = new ol.layer.Group({
 		title: 'IMX Objecten',
 		layers: [
-			baseLayers,
 			polygonLayers,
 			lineLayers,
 			pointLayers,
-
 		]
 	});
 
@@ -75,49 +75,51 @@ function initMap() {
 	map = new ol.Map({
 			target: 'map',
 			'title': 'Base map',
-			layers: [overlayGroup],
+			layers: [baseLayers, vectorLayers],
 			view: new ol.View({
 				center: ol.proj.fromLonLat([5.3, 52.23]),
 				zoom: 8
 			})
 		});
-	var popup = new ol.Overlay({
+	//var selectInteraction = new ol.interaction.Select();
+	//map.addInteraction(selectInteraction);
+	popup = new ol.Overlay({
 			element: document.getElementById('popup')
 		});
 	map.addOverlay(popup);
-	map.on('singleclick', function (evt) {
-		var element = document.getElementById('popup');
-		console.log(evt);
-		var pixel = map.getPixelFromCoordinate(evt.coordinate);
-		var features = [];
-		map.forEachFeatureAtPixel(pixel, function (feature) {
-			if (feature.get('imxType') && feature.get('geometry').getType() !== 'Polygon') {
-				features.push(feature);
-			}
-		});
-		if (features.length > 0) {
-			var info = [];
-			var i,
-			ii;
-			for (i = 0, ii = features.length; i < ii; ++i) {
-				var f = features[i];
-				info.push(f.get('imxType') + ': ' + f.get('name') + '<br/>');
-			}
-			$(element).popover('destroy');
-			popup.setPosition(evt.coordinate);
-
-			$(element).popover({
-				'placement': 'top',
-				'html': true,
-				'content': info
-			});
-			$(element).popover('show');
-		} else {
-			$(element).popover('destroy');
-		}
-	});
+	map.on('singleclick', popupSingleClick);
 }
 
+function popupSingleClick(evt) {
+	var element = $(popup.getElement());
+	console.log(evt);
+	var pixel = map.getPixelFromCoordinate(evt.coordinate);
+	var features = [];
+	map.forEachFeatureAtPixel(pixel, function (feature) {
+		if (feature.get('imxType') && feature.get('geometry').getType() !== 'Polygon') {
+			features.push(feature);
+		}
+	});
+	if (features.length > 0) {
+		var info = [];
+		var i,
+		ii;
+		for (i = 0, ii = features.length; i < ii; ++i) {
+			var f = features[i];
+			info.push(f.get('imxType') + ': ' + f.get('name') + '<br/>');
+		}
+		element.popover('destroy');
+		element.popover({
+			'placement': 'top',
+			'html': true,
+			'content': info
+		});
+		popup.setPosition(evt.coordinate);
+		element.popover('show');
+	} else {
+		element.popover('destroy');
+	}
+}
 function loadDemoFile() {
 	$.get('file.xml', function (data) {
 		parseAndRenderIMX(data, 'file.xml');
@@ -194,14 +196,19 @@ function createPointLayer(title, color, items, vectorLayer) {
 			var coordValues = poslist.replace(',', ' ').split(' ');
 			var point = new ol.geom.Point([coordValues[0], coordValues[1]]);
 			point.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+			var puic = $item.attr('puic');
+			if (puic == undefined) {
+				puic = $item.attr('puicRef')
+			}
 			var feature = new ol.Feature({
 					geometry: point,
-					id: $item.attr('puic'),
+					id: puic,
 					name: $item.attr('name'),
 					label: $item.attr('name'),
 					imxType: title,
 					color: color
 				});
+			feature.setId(puic);
 			addAttributes(feature, item);
 			vectorLayer.getSource().addFeature(feature);
 		}
@@ -231,15 +238,20 @@ function createLineStringLayer(title, color, items, vectorLayer) {
 			}
 			var line = new ol.geom.LineString(coordinates);
 			line.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+			var puic = $item.attr('puic');
+			if (puic == undefined) {
+				puic = $item.attr('puicRef')
+			}
 			var feature = new ol.Feature({
 					geometry: line,
-					id: $item.attr('puic'),
+					id: puic,
 					name: $item.attr('name'),
 					label: $item.attr('name'),
 					imxType: title,
 					text_color: color,
 					stroke_color: color
 				});
+			feature.setId(puic);
 			vectorLayer.getSource().addFeature(feature);
 		}
 	});
@@ -260,15 +272,20 @@ function createPolygonLayer(title, color, items, vectorLayer) {
 			}
 			var poly = new ol.geom.Polygon([coordinates]);
 			poly.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+			var puic = $item.attr('puic');
+			if (puic == undefined) {
+				puic = $item.attr('puicRef')
+			}
 			var feature = new ol.Feature({
 					geometry: poly,
-					id: $item.attr('puic'),
+					id: puic,
 					name: $item.attr('name'),
 					label: $item.attr('name'),
 					imxType: title,
 					text_color: color,
 					stroke_color: color
 				});
+			feature.setId(puic);
 			vectorLayer.getSource().addFeature(feature);
 		}
 	});
@@ -290,15 +307,20 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 				}
 				var polygon = new ol.geom.Polygon([coordinates]);
 				polygon.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+				var puic = $item.attr('puic');
+				if (puic == undefined) {
+					puic = $item.attr('puicRef')
+				}
 				var feature = new ol.Feature({
 						geometry: polygon,
-						id: $item.attr('puic'),
+						id: puic,
 						name: $item.attr('name'),
 						label: $item.attr('name'),
 						imxType: title,
 						text_color: color,
 						stroke_color: color
 					});
+				feature.setId(puic);
 				vectorLayer.getSource().addFeature(feature);
 			}
 		})
@@ -324,17 +346,22 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 			}
 		});
 		var polygon = new ol.geom.MultiLineString(lineGeoms);
-				polygon.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
-				var feature = new ol.Feature({
-						geometry: polygon,
-						id: $item.attr('puic'),
-						name: $item.attr('name'),
-						label: $item.attr('name'),
-						imxType: title,
-						text_color: color,
-						stroke_color: color
-					});
-				vectorLayer.getSource().addFeature(feature);
+		polygon.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+		var puic = $item.attr('puic');
+		if (puic == undefined) {
+			puic = $item.attr('puicRef')
+		}
+		var feature = new ol.Feature({
+				geometry: polygon,
+				id: puic,
+				name: $item.attr('name'),
+				label: $item.attr('name'),
+				imxType: title,
+				text_color: color,
+				stroke_color: color
+			});
+		feature.setId(puic);
+		vectorLayer.getSource().addFeature(feature);
 	});
 	lineLayers.getLayers().push(vectorLayer);
 }

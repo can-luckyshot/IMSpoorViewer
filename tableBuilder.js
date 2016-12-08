@@ -24,8 +24,14 @@ function buildDataTables(typeMap) {
 
 			for (var j = 0; j < headers.length; j++) {
 				var value = $(renderableObjects[i]).attr(headers[j]);
-				var rowData = $('<td></td>').text(value);
-				row.append(rowData);
+				if (headers[j].toLowerCase().includes('puic')) {
+					var link = $('<a></a>').text(value).on('click', jumpToFeature);
+					var rowData = $('<td></td>').append(link);
+					row.append(rowData);
+				} else {
+					var rowData = $('<td></td>').text(value);
+					row.append(rowData);
+				}
 			}
 			row.append(rowData);
 			tbody.append(row);
@@ -33,7 +39,7 @@ function buildDataTables(typeMap) {
 		table.append(tbody);
 		var title = $('<h1>' + type + ' (' + renderableObjects.length + ')</h1>');
 		var legendItem = $('<li></li>').append('<a href="#' + type + '">' + type + '</a>');
-		if(first){
+		if (first) {
 			legendItem.addClass('active');
 			first = false;
 		}
@@ -44,4 +50,23 @@ function buildDataTables(typeMap) {
 		tableDiv.append(par);
 		$('#tableContent').append(tableDiv);
 	});
+}
+
+function jumpToFeature(evt) {
+	var puic = event.target.text;
+	console.log('jump to puic: ' + puic);
+	var layers = vectorLayers.getLayers().getArray();
+	for (var i = 0; i < layers.length; i++) {
+		var subLayers = layers[i].getLayers().getArray();
+		for (var j = 0; j < subLayers.length; j++) {
+			var feature = subLayers[j].getSource().getFeatureById(puic);
+			if (feature) {
+				console.log('gevonden: '+feature);
+				map.getView().fit(feature.getGeometry(), map.getSize());
+				console.log('show tab mapviewer')
+				$('.navbar-nav a[href="#mapviewer"]').tab('show');
+				break;
+			}
+		}
+	};
 }
