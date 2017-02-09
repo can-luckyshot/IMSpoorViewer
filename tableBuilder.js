@@ -2,7 +2,9 @@ function buildDataTables(typeMap) {
 	$('#tableLegend').empty();
 	$('#tableContent').empty();
 	var first = true;
-	$.each(typeMap, function (type, renderableObjects) {
+	$.each(typeMap, function (type, entry) {
+		var color = entry.color;
+		var renderableObjects = entry.list;
 		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var tableDiv = $('<div></div>').attr('id', type);
 		var table = $('<table></table>').addClass('table table-bordered');
@@ -63,6 +65,10 @@ function jumpToFeature(evt) {
 			if (feature) {
 				console.log('gevonden: '+feature);
 				map.getView().fit(feature.getGeometry(), map.getSize());
+				var zoom = map.getView().getZoom();
+				if(zoom >= 20){
+					map.getView().setZoom(20);
+				}
 				console.log('show tab mapviewer')
 				$('.navbar-nav a[href="#mapviewer"]').tab('show');
 				break;

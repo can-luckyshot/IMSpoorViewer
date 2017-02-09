@@ -132,18 +132,21 @@ function parseAndRenderIMX(xmlDoc, src) {
 		objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
 	}
 	var typeMap = new Object();
-
+	var i=0;
 	objectsWithGeom.each(function (index, objectWithGeom) {
 		var nodeName = objectWithGeom.nodeName;
-		var list = typeMap[nodeName];
-		if (list == undefined) {
-			list = [];
-			typeMap[nodeName] = list;
+		var entry = typeMap[nodeName];
+		if (entry == undefined) {
+			var color = getColor(i++);
+			entry = new Object({color: color,
+								list: []});
+			typeMap[nodeName] = entry;
 		}
-		list.push(objectWithGeom);
+		entry.list.push(objectWithGeom);
 	});
 	buildTypeLayers(typeMap);
 	buildDataTables(typeMap);
+	buildScene(typeMap);
 	buildGraph();
 	updateLayerSwitcher();
 }
@@ -151,9 +154,9 @@ function parseAndRenderIMX(xmlDoc, src) {
 function buildGraph() {}
 
 function buildTypeLayers(typeMap) {
-	var i = 0;
-	$.each(typeMap, function (type, renderableObjects) {
-		var color = getColor(i++);
+	$.each(typeMap, function (type, entry) {
+		var color = entry.color;
+		var renderableObjects = entry.list;
 		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
 		var geom = location.children[0];
