@@ -34,14 +34,14 @@ function initModelViewer() {
 	container.appendChild(element);
 	scene = new THREE.Scene();
 
-	camera = new THREE.PerspectiveCamera(60, w / h, 0.001, 1500);
+	camera = new THREE.PerspectiveCamera(60, w / h, 0.001, 3500);
 	//camera.position.set(-500, 10.0, 500);
 	camera.position.set(0, 10.0, 50);
 	scene.add(camera);
 
 	initFirstPersonControls();
 
-	var light = new THREE.HemisphereLight(0x777777, 0x000000, 1.0);
+	var light = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 1.0);
 	scene.add(light);
 
 	//initDummy();
@@ -142,7 +142,7 @@ function buildScene(typeMap) {
 function fillTracklist() {
 	var list = $('#tracklist');
 	$.each(trackPaths, function (index, track) {
-		console.log('add track: ' + track.name);
+		//console.log('add track: ' + track.name);
 		var item = $('<li></li>');
 		var content = $('<a></a>').text(track.name);
 		content.on('click', function () {
@@ -234,7 +234,7 @@ function createTracks(renderableObjects) {
 			path: path,
 			name: trackName
 		});
-		var mesh = buildTrackMesh(path, points.length);
+		var mesh = buildTrackMesh(path, points.length,index);
 		mesh.renderDepth = index;
 		scene.add(mesh);
 		if (index == 0 && false) {
@@ -317,7 +317,7 @@ function buildPath(points) {
 	return new THREE.CatmullRomCurve3(newPoints3d);	                 
 }
 
-function buildTrackMesh(path, segmentCount) {
+function buildTrackMesh(path, segmentCount,count) {
 	var singleGeometry = new THREE.Geometry();
 	var radius = TTW / 2.0;
 	var radiusSegments = 2;
@@ -341,7 +341,10 @@ function buildTrackMesh(path, segmentCount) {
 			specular: 0xffffff,
 			shininess: 20,
 			shading: THREE.FlatShading,
-			map: rails_texture
+			map: rails_texture,
+			polygonOffset: true,
+			polygonOffsetFactor: count, // positive value pushes polygon further away
+			polygonOffsetUnits: 1
 			//wireframe: true
 		});
 
@@ -377,6 +380,7 @@ function updateControlSpeed() {
 
 function render(dt) {
 	if (animateCamera) {
+		var camH = 3.0;
 		var camSpeed = 15;
 		var dur = Date.now() - animationStart;
 		var dist = (dur / 1000.0) * camSpeed;
@@ -385,9 +389,9 @@ function render(dt) {
 		var m = (dist) / pathLength;
 		if (lootAtM <= 1.0) {
 			var camP = animationPath.getPoint(m);
-			camP.y = 3.0;
+			camP.y = camH;
 			var lookAt = animationPath.getPoint(lootAtM);
-			lookAt.y = 3.0;
+			lookAt.y = camH;
 			camera.position.copy(camP);
 			camera.lookAt(lookAt);
 		} else {
