@@ -12,10 +12,14 @@ var animationStart;
 var animationPath;
 var TTW = 2.915; //track texture width
 var TTL = TTW * 2.0; //track texture length
+var loader;
+	
 
 var clock = new THREE.Clock();
 
 function initModelViewer() {
+	loader = new THREE.TextureLoader();
+	loader.crossOrigin = true;
 	console.log('init 3d model renderer');
 	renderer = new THREE.WebGLRenderer();
 	element = renderer.domElement;
@@ -96,7 +100,8 @@ function initDummy() {
 }
 
 function initPlane() {
-	var texture = new THREE.TextureLoader().load('textures/patterns/checker.png');
+	
+	var texture = loader.load('textures/patterns/checker.png');
 
 	texture.wrapS = THREE.RepeatWrapping;
 	texture.wrapT = THREE.RepeatWrapping;
@@ -245,8 +250,8 @@ function createSignals(renderableObjects) {
 	var material = new THREE.MeshPhongMaterial({
 			color: 0xc0c0c0
 		});
-	var loader = new THREE.JSONLoader();
-	loader.load('models/signal.json', function (geometry) {
+	var jsonloader = new THREE.JSONLoader();
+	jsonloader.load('models/signal.json', function (geometry) {
 		geometry.computeBoundingBox();
 		var signalScale = 6.045 / geometry.boundingBox.max.y;
 		$.each(renderableObjects, function (index, item) {
@@ -320,7 +325,7 @@ function buildTrackMesh(path, segmentCount) {
 	var segments = Math.round(path.getLength() / TTL);
 	var geom = new TrackGeometry(path, segments, radius, radiusSegments, closed);
 	//rails_texture = THREE.ImageUtils.loadTexture('textures/railway_track.jpg');
-	var rails_texture = new THREE.TextureLoader().load('textures/rails.png');
+	var rails_texture = loader.load('textures/rails.png');
 	rails_texture.wrapS = THREE.RepeatWrapping;
 	rails_texture.wrapT = THREE.RepeatWrapping;
 	//console.log('length: '+path.getLength());
