@@ -137,6 +137,12 @@ function buildScene(typeMap) {
 	createTracks(typeMap.Track.list);
 	fillTracklist();
 	createSignals(typeMap.Signal.list);
+	createBufferstops(typeMap.BufferStop.list);
+	createOverheadLineMasts(typeMap.OverheadLineMast.list);
+	//ElectricityCabinet
+	createFurniture(typeMap.ElectricityCabinet.list,'models/kast_groot.json',2.2);
+	//GasCabinet
+	createFurniture(typeMap.GasCabinet.list,'models/kast_klein.json',1.2);
 }
 
 function fillTracklist() {
@@ -253,6 +259,7 @@ function createSignals(renderableObjects) {
 	var jsonloader = new THREE.JSONLoader();
 	jsonloader.load('models/signal.json', function (geometry) {
 		geometry.computeBoundingBox();
+		geometry.computeVertexNormals();
 		var signalScale = 6.045 / geometry.boundingBox.max.y;
 		$.each(renderableObjects, function (index, item) {
 			var mesh = new THREE.Mesh(geometry, material);
@@ -281,6 +288,72 @@ function createSignals(renderableObjects) {
 			}
 		});
 	});
+}
+
+function createFurniture(renderableObjects,modelPath,height) {
+	console.log('build Furniture: '+renderableObjects.length);
+	var material = new THREE.MeshPhongMaterial({
+			color: 0xc0c0c0
+		});
+	var jsonloader = new THREE.JSONLoader();
+	jsonloader.load(modelPath, function (geometry) {
+		geometry.computeBoundingBox();
+		geometry.computeVertexNormals();
+		var scale = height / geometry.boundingBox.max.y;
+		$.each(renderableObjects, function (index, item) {
+			var mesh = new THREE.Mesh(geometry, material);
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			
+			var x =  - (point[0] - offset[0]);
+			var y = point[1] - offset[1];
+			mesh.position.set(x, 0.0, y);
+			mesh.scale.set(scale, scale, scale);
+			scene.add(mesh);			
+		});
+	});
+}
+
+function createBufferstops(renderableObjects) {
+	console.log('build bufferstops: '+renderableObjects.length);
+	var material = new THREE.MeshPhongMaterial({
+			color: 0xc0c0c0
+		});
+	var jsonloader = new THREE.JSONLoader();
+	jsonloader.load('models/bufferstop.json', function (geometry) {
+		geometry.computeBoundingBox();
+		var scale = 1.500 / geometry.boundingBox.max.y;
+		$.each(renderableObjects, function (index, item) {
+			var mesh = new THREE.Mesh(geometry, material);
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			
+			var x =  - (point[0] - offset[0]);
+			var y = point[1] - offset[1];
+			mesh.position.set(x, 0.0, y);
+			mesh.scale.set(scale, scale, scale);
+			scene.add(mesh);			
+		});
+	});
+}
+
+function createOverheadLineMasts(renderableObjects) {
+	console.log('build OverheadLineMasts: '+renderableObjects.length);
+	var material = new THREE.MeshPhongMaterial({
+			color: 0xc0c0c0
+		});
+		var mastHeight = 7.0;
+		var geometry = new THREE.BoxGeometry(0.22,7.0,0.22);
+		$.each(renderableObjects, function (index, item) {
+			var mesh = new THREE.Mesh(geometry, material);
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			var x =  - (point[0] - offset[0]);
+			var y = point[1] - offset[1];
+			mesh.position.set(x, 3.5, y);
+			scene.add(mesh);			
+		});
+	
 }
 
 function getPathByPuic(puic) {
