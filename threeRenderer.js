@@ -13,7 +13,6 @@ var animationPath;
 var TTW = 2.915; //track texture width
 var TTL = TTW * 2.0; //track texture length
 var loader;
-	
 
 var clock = new THREE.Clock();
 
@@ -100,7 +99,7 @@ function initDummy() {
 }
 
 function initPlane() {
-	
+
 	var texture = loader.load('textures/patterns/checker.png');
 
 	texture.wrapS = THREE.RepeatWrapping;
@@ -134,15 +133,16 @@ function buildScene(typeMap) {
 	calcExtent(typeMap);
 	console.log('Extent: ' + extent);
 	initPlane();
-	createTracks(typeMap.Track.list);
+	createTracks(typeMap.Track);
 	fillTracklist();
-	createSignals(typeMap.Signal.list);
-	createBufferstops(typeMap.BufferStop.list);
-	createOverheadLineMasts(typeMap.OverheadLineMast.list);
+	createSignals(typeMap.Signal);
+	createBufferstops(typeMap.BufferStop);
+	createOverheadLineMasts(typeMap.OverheadLineMast);
+	createOverheadLineMasts(typeMap.OverheadLineSupport);
 	//ElectricityCabinet
-	createFurniture(typeMap.ElectricityCabinet.list,'models/kast_groot.json',2.2);
+	createFurniture(typeMap.ElectricityCabinet, 'models/kast_groot.json');
 	//GasCabinet
-	createFurniture(typeMap.GasCabinet.list,'models/kast_klein.json',1.2);
+	createFurniture(typeMap.GasCabinet, 'models/kast_klein.json');
 }
 
 function fillTracklist() {
@@ -154,13 +154,15 @@ function fillTracklist() {
 		content.on('click', function () {
 			flyoverTrack(track.puic);
 		});
-		var pl = ''+track.path.getLength();
+		var pl = '' + track.path.getLength();
 		pl = pl.split('.')[0];
-		var badge = $('<span></span>').text(''+pl+'m').addClass('badge pull-right');
-		badge.css({"backgroundColor": '#428bca'});
+		var badge = $('<span></span>').text('' + pl + 'm').addClass('badge pull-right');
+		badge.css({
+			"backgroundColor": '#428bca'
+		});
 		content.append(badge)
 		item.append(content);
-		
+
 		list.append(item);
 	});
 }
@@ -229,7 +231,10 @@ function getGmlCoords(item) {
 }
 
 function createTracks(renderableObjects) {
-	$.each(renderableObjects, function (index, item) {
+	if (!renderableObjects) {
+		return;
+	}
+	$.each(renderableObjects.list, function (index, item) {
 		var $item = $(item);
 		var puic = $item.attr('puicRef');
 		var trackName = $item.attr('name');
@@ -240,29 +245,31 @@ function createTracks(renderableObjects) {
 			path: path,
 			name: trackName
 		});
-		var mesh = buildTrackMesh(path, points.length,index);
+		var mesh = buildTrackMesh(path, points.length, index);
 		mesh.renderDepth = index;
 		scene.add(mesh);
-		if (index == 0 && false) {
-			var P = path.getPointAt(0);
-			camera.position.set(P.x, 10.0, P.z);
-			console.log('set camera to first track position: ' + P.x + ',' + P.z);
-			//buildSignal(path,index);
-		}
 	});
 }
 
 function createSignals(renderableObjects) {
+	if (!renderableObjects) {
+		return;
+	}
 	var material = new THREE.MeshPhongMaterial({
 			color: 0xc0c0c0
 		});
 	var jsonloader = new THREE.JSONLoader();
 	jsonloader.load('models/signal.json', function (geometry) {
 		geometry.computeBoundingBox();
-		geometry.computeVertexNormals();
-		var signalScale = 6.045 / geometry.boundingBox.max.y;
-		$.each(renderableObjects, function (index, item) {
+		geometry.computeVertexNormals();		
+		$.each(renderableObjects.list, function (index, item) {
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			var parentObject = new THREE.Object3D();
 			var mesh = new THREE.Mesh(geometry, material);
+			var textMesh = addSignalName($item.attr('name'));
+			parentObject.add(mesh);
+			parentObject.add(textMesh);
 			var point = getGmlCoords(item)[0];
 			var $item = $(item);
 			var tri = $item.find('TrackRelationInfo');
@@ -273,15 +280,16 @@ function createSignals(renderableObjects) {
 			//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
 			var tan = path.getTangentAt(measure / path.getLength());
 			var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
-			if (direction === 'Upstream') {
+			if (direction === 'Downstream') {
 				angle += Math.PI;
 			}
-			mesh.rotation.set(0.0, angle, 0.0);
+			
+			parentObject.rotation.set(0.0, angle, 0.0);
 			var x =  - (point[0] - offset[0]);
 			var y = point[1] - offset[1];
-			mesh.position.set(x, 0.0, y);
-			mesh.scale.set(signalScale, signalScale, signalScale);
-			scene.add(mesh);
+			parentObject.position.set(x, 0.0, y);			
+			scene.add(parentObject);
+
 			if (index == 0) {
 				camera.position.set(x, 10.0, y);
 				console.log('set camera to first track position: ' + x + ',' + y);
@@ -290,32 +298,72 @@ function createSignals(renderableObjects) {
 	});
 }
 
-function createFurniture(renderableObjects,modelPath,height) {
-	console.log('build Furniture: '+renderableObjects.length);
+function addSignalName(text) {
+	var canvas = document.createElement('canvas');
+	var spriteW = 256;
+	var spriteH = 64;
+	canvas.width = spriteW;
+	canvas.height = spriteH;
+	var context = canvas.getContext('2d');
+	context.font = "Bold 40px Arial";
+	context.fillStyle = "rgb(255,255,0)";
+	context.fillRect(0, 0, canvas.width, canvas.height);
+	context.fillStyle = "rgb(0,0,0)";
+	context.fillRect(3, 3, canvas.width - 6, canvas.height - 6);
+	context.fillStyle = "rgb(255,255,0)";
+	context.fillStyle = "rgb(255,255,0)";
+	context.fillText(text, 20, 45);
+
+	var textTexture = new THREE.Texture(canvas);
+	textTexture.needsUpdate = true;
+
+	var geometry = new THREE.PlaneGeometry(1, spriteH / spriteW);
 	var material = new THREE.MeshPhongMaterial({
-			color: 0xc0c0c0
+			color: 0xffffff,
+			specular: 0xffffff,
+			shininess: 20,
+			side: THREE.DoubleSide,
+			shading: THREE.FlatShading,
+			map: textTexture,
+		});
+	var plane = new THREE.Mesh(geometry, material);
+	plane.position.x = 0.3;
+	plane.position.y = 2.5;
+	plane.rotateY(Math.PI * 0.5);
+	return plane;
+
+}
+
+function createFurniture(renderableObjects, modelPath) {
+	if (!renderableObjects) {
+		return;
+	}
+	console.log('build Furniture: ' + renderableObjects.list.length);
+	var material = new THREE.MeshLambertMaterial({
+			color: 0x576065
 		});
 	var jsonloader = new THREE.JSONLoader();
 	jsonloader.load(modelPath, function (geometry) {
 		geometry.computeBoundingBox();
 		geometry.computeVertexNormals();
-		var scale = height / geometry.boundingBox.max.y;
-		$.each(renderableObjects, function (index, item) {
+		$.each(renderableObjects.list, function (index, item) {
 			var mesh = new THREE.Mesh(geometry, material);
 			var point = getGmlCoords(item)[0];
 			var $item = $(item);
-			
+
 			var x =  - (point[0] - offset[0]);
 			var y = point[1] - offset[1];
 			mesh.position.set(x, 0.0, y);
-			mesh.scale.set(scale, scale, scale);
-			scene.add(mesh);			
+			scene.add(mesh);
 		});
 	});
 }
 
 function createBufferstops(renderableObjects) {
-	console.log('build bufferstops: '+renderableObjects.length);
+	if (!renderableObjects) {
+		return;
+	}
+	console.log('build bufferstops: ' + renderableObjects.list.length);
 	var material = new THREE.MeshPhongMaterial({
 			color: 0xc0c0c0
 		});
@@ -323,37 +371,40 @@ function createBufferstops(renderableObjects) {
 	jsonloader.load('models/bufferstop.json', function (geometry) {
 		geometry.computeBoundingBox();
 		var scale = 1.500 / geometry.boundingBox.max.y;
-		$.each(renderableObjects, function (index, item) {
+		$.each(renderableObjects.list, function (index, item) {
 			var mesh = new THREE.Mesh(geometry, material);
 			var point = getGmlCoords(item)[0];
 			var $item = $(item);
-			
+
 			var x =  - (point[0] - offset[0]);
 			var y = point[1] - offset[1];
 			mesh.position.set(x, 0.0, y);
 			mesh.scale.set(scale, scale, scale);
-			scene.add(mesh);			
+			scene.add(mesh);
 		});
 	});
 }
 
 function createOverheadLineMasts(renderableObjects) {
-	console.log('build OverheadLineMasts: '+renderableObjects.length);
+	if (!renderableObjects) {
+		return;
+	}
+	console.log('build OverheadLineMasts: ' + renderableObjects.list.length);
 	var material = new THREE.MeshPhongMaterial({
 			color: 0xc0c0c0
 		});
-		var mastHeight = 7.0;
-		var geometry = new THREE.BoxGeometry(0.22,7.0,0.22);
-		$.each(renderableObjects, function (index, item) {
-			var mesh = new THREE.Mesh(geometry, material);
-			var point = getGmlCoords(item)[0];
-			var $item = $(item);
-			var x =  - (point[0] - offset[0]);
-			var y = point[1] - offset[1];
-			mesh.position.set(x, 3.5, y);
-			scene.add(mesh);			
-		});
-	
+	var mastHeight = 7.0;
+	var geometry = new THREE.BoxGeometry(0.22, 7.0, 0.22);
+	$.each(renderableObjects.list, function (index, item) {
+		var mesh = new THREE.Mesh(geometry, material);
+		var point = getGmlCoords(item)[0];
+		var $item = $(item);
+		var x =  - (point[0] - offset[0]);
+		var y = point[1] - offset[1];
+		mesh.position.set(x, 3.5, y);
+		scene.add(mesh);
+	});
+
 }
 
 function getPathByPuic(puic) {
@@ -381,17 +432,16 @@ function buildPath(points) {
 		newPoints2d.push(new THREE.Vector2(x, y));
 	});
 	var tempPath = new THREE.Path(newPoints2d);
-	var divisions = Math.round(tempPath.getLength()/TTL);
+	var divisions = Math.round(tempPath.getLength() / TTL);
 	newPoints2d = tempPath.getSpacedPoints(divisions);
 	var newPoints3d = [];
 	$.each(newPoints2d, function (index, p) {
-		newPoints3d.push(new THREE.Vector3(p.x,0.0, p.y));
+		newPoints3d.push(new THREE.Vector3(p.x, 0.0, p.y));
 	});
-	return new THREE.CatmullRomCurve3(newPoints3d);	                 
+	return new THREE.CatmullRomCurve3(newPoints3d);
 }
 
-function buildTrackMesh(path, segmentCount,count) {
-	var singleGeometry = new THREE.Geometry();
+function buildTrackMesh(path, segmentCount, count) {
 	var radius = TTW / 2.0;
 	var radiusSegments = 2;
 	var closed = false;
