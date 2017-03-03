@@ -191,8 +191,11 @@ function getColor(index) {
 	return color;
 }
 
-function getPoslist(item) {
-	var $item = $(item);
+function getPoslist($item) {
+	var locations = $item.find('GeographicLocation');
+	if(!locations){
+		return undefined;
+	}
 	var location = $item.find('GeographicLocation')[0];
 	var geom = location.children[0];
 	return $(geom).text().trim();
@@ -200,7 +203,8 @@ function getPoslist(item) {
 
 function createPointLayer(title, color, items, vectorLayer) {
 	$.each(items, function (index, item) {
-		var poslist = getPoslist(item);
+		var $item = $(item);
+		var poslist = getPoslist($item);
 		if (poslist != undefined) {
 			var coordValues = poslist.replace(',', ' ').split(' ');
 			var point = new ol.geom.Point([coordValues[0], coordValues[1]]);
@@ -235,7 +239,8 @@ function addAttributes(feature, item) {
 
 function createLineStringLayer(title, color, items, vectorLayer) {
 	$.each(items, function (index, item) {
-		var poslist = getPoslist(item);
+		var $item = $(item);
+		var poslist = getPoslist($item);
 		if (poslist != undefined) {
 			var coordinates = [];
 			var points = poslist.split(' ');
@@ -268,7 +273,8 @@ function createLineStringLayer(title, color, items, vectorLayer) {
 function createPolygonLayer(title, color, items, vectorLayer) {
 	//console.log('polygons: ' + title + ' itemCount: ' + items.length);
 	$.each(items, function (index, item) {
-		var poslist = getPoslist(item);
+		var $item = $(item);
+		var poslist = getPoslist($item);
 		if (poslist != undefined) {
 			var coordinates = [];
 			var points = poslist.split(' ');
