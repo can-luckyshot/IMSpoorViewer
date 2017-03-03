@@ -14,6 +14,9 @@ function applyMargins() {
 	var html = document.documentElement;
 	$('#myScrollspy').height(html.clientHeight - 50);
 	$('#tableContent').height(html.clientHeight - 50);
+	$('#viewport3d').height(html.clientHeight - 50);
+	$('#tracklist').height(html.clientHeight - 50);
+	//$('#viewport3d').width(html.clientWidth - 50);
 }
 function isConstrained() {
 	return $(".sidebar").width() == $(window).width();
@@ -53,7 +56,7 @@ function fillLayerSwitcher(layers, groupVisible) {
 			
 			if (lyr instanceof ol.layer.Vector) {
 				var f = lyr.getSource().getFeatures();
-				var badge = $('<span></span>').text(''+f.length).addClass('badge');
+				var badge = $('<span></span>').text(''+f.length).addClass('badge').addClass('pull-right');
 				if(f[0].get('color')){
 					badge.css({"backgroundColor": f[0].get('color')});
 				}
@@ -98,4 +101,5 @@ $(function () {
 	updateLayerSwitcher(map);
 	applyInitialUIState();
 	applyMargins();
+	initModelViewer();
 });
