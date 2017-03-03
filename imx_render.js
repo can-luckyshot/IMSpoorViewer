@@ -191,7 +191,7 @@ function getColor(index) {
 	return color;
 }
 
-function getPoslist() {
+function getPoslist(item) {
 	var $item = $(item);
 	var location = $item.find('GeographicLocation')[0];
 	var geom = location.children[0];
