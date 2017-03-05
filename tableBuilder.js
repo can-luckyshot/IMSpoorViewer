@@ -1,3 +1,20 @@
+var tableTypeMap;
+
+function setTableTypeMap(typeMap) {
+	tableTypeMap = typeMap;
+}
+
+function loadDataTables() {
+	console.log('loadDataTables');
+	if (tableTypeMap) {
+		buildDataTables(tableTypeMap);
+		tableTypeMap = undefined; // load only once;
+	}
+	else{
+		console.log('no data yet');
+	}
+}
+
 function buildDataTables(typeMap) {
 	$('#tableLegend').empty();
 	$('#tableContent').empty();
@@ -63,10 +80,10 @@ function jumpToFeature(evt) {
 		for (var j = 0; j < subLayers.length; j++) {
 			var feature = subLayers[j].getSource().getFeatureById(puic);
 			if (feature) {
-				console.log('gevonden: '+feature);
+				console.log('gevonden: ' + feature);
 				map.getView().fit(feature.getGeometry(), map.getSize());
 				var zoom = map.getView().getZoom();
-				if(zoom >= 20){
+				if (zoom >= 20) {
 					map.getView().setZoom(20);
 				}
 				console.log('show tab mapviewer')

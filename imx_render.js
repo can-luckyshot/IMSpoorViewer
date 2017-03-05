@@ -132,20 +132,22 @@ function parseAndRenderIMX(xmlDoc, src) {
 		objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
 	}
 	var typeMap = new Object();
-	var i=0;
+	var i = 0;
 	objectsWithGeom.each(function (index, objectWithGeom) {
 		var nodeName = objectWithGeom.nodeName;
 		var entry = typeMap[nodeName];
 		if (entry == undefined) {
 			var color = getColor(i++);
-			entry = new Object({color: color,
-								list: []});
+			entry = new Object({
+					color: color,
+					list: []
+				});
 			typeMap[nodeName] = entry;
 		}
 		entry.list.push(objectWithGeom);
 	});
 	buildTypeLayers(typeMap);
-	buildDataTables(typeMap);
+	setTableTypeMap(typeMap);
 	buildScene(typeMap);
 	buildGraph();
 	updateLayerSwitcher();
@@ -193,7 +195,7 @@ function getColor(index) {
 
 function getPoslist($item) {
 	var locations = $item.find('GeographicLocation');
-	if(!locations){
+	if (!locations) {
 		return undefined;
 	}
 	var location = $item.find('GeographicLocation')[0];

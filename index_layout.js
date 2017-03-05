@@ -16,7 +16,6 @@ function applyMargins() {
 	$('#tableContent').height(html.clientHeight - 50);
 	$('#viewport3d').height(html.clientHeight - 50);
 	$('#tracklist').height(html.clientHeight - 50);
-	//$('#viewport3d').width(html.clientWidth - 50);
 }
 function isConstrained() {
 	return $(".sidebar").width() == $(window).width();
@@ -50,29 +49,32 @@ function fillLayerSwitcher(layers, groupVisible) {
 			if (lyr.getVisible() && groupVisible) {
 				icon.addClass('fa fa-globe');
 			}
-			
+
 			item.append(icon);
 			item.append(lyr.get('title'));
-			
+
 			if (lyr instanceof ol.layer.Vector) {
 				var f = lyr.getSource().getFeatures();
-				var badge = $('<span></span>').text(''+f.length).addClass('badge').addClass('pull-right');
-				if(f[0].get('color')){
-					badge.css({"backgroundColor": f[0].get('color')});
+				var badge = $('<span></span>').text('' + f.length).addClass('badge').addClass('pull-right');
+				if (f[0].get('color')) {
+					badge.css({
+						"backgroundColor": f[0].get('color')
+					});
+				} else {
+					badge.css({
+						"backgroundColor": f[0].get('stroke_color')
+					});
 				}
-				else{
-					badge.css({"backgroundColor": f[0].get('stroke_color')});
-				}
-				item.append(badge);				
-			}			
-			item.on('click',(function (myLyr) {
-				return function (e) {
-					console.log('toggle ' + myLyr.get('title'));
-					var visible = myLyr.getVisible();
-					myLyr.setVisible(!visible);
-					updateLayerSwitcher();
-				}
-			})(lyr));
+				item.append(badge);
+			}
+			item.on('click', (function (myLyr) {
+					return function (e) {
+						console.log('toggle ' + myLyr.get('title'));
+						var visible = myLyr.getVisible();
+						myLyr.setVisible(!visible);
+						updateLayerSwitcher();
+					}
+				})(lyr));
 			$("#layerList").append(item);
 		}
 		if (lyr.getLayers) {
