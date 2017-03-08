@@ -13,6 +13,7 @@ var animationPath;
 var TTW = 2.915; //track texture width
 var TTL = TTW * 2.0; //track texture length
 var loader;
+var buildingIds = [];
 
 var clock = new THREE.Clock();
 
@@ -143,6 +144,8 @@ function buildScene(typeMap) {
 	createFurniture(typeMap.ElectricityCabinet, 'models/kast_groot.json');
 	//GasCabinet
 	createFurniture(typeMap.GasCabinet, 'models/kast_klein.json');
+	createBuildings(typeMap.Track);
+
 }
 
 function fillTracklist() {
@@ -192,6 +195,7 @@ function calcExtent(typeMap) {
 			maxX = Math.max(x, maxX);
 			maxY = Math.max(y, maxY);
 		}
+
 	}
 	extent = [];
 	extent.push(minX);
@@ -213,6 +217,23 @@ function calcExtent(typeMap) {
 	scale = 1.0;
 	console.log('offset: ' + offset);
 
+}
+
+function wktCoordStr(coords) {
+	var l = coords.length;
+	var str = '';
+	str += '' + coords[0][0].split('.')[0];
+	str += ' ';
+	str += '' + coords[0][1].split('.')[0];
+	for (var i = 1; i < l; i++) {
+		str += ',';
+		str += '' + coords[i][0].split('.')[0];
+		str += ' ';
+		str += '' + coords[i][1].split('.')[0];
+	}
+
+	//console.log(str);
+	return str;
 }
 
 function getGmlCoords(item) {
@@ -261,7 +282,7 @@ function createSignals(renderableObjects) {
 	var jsonloader = new THREE.JSONLoader();
 	jsonloader.load('models/signal.json', function (geometry) {
 		geometry.computeBoundingBox();
-		geometry.computeVertexNormals();		
+		geometry.computeVertexNormals();
 		$.each(renderableObjects.list, function (index, item) {
 			var point = getGmlCoords(item)[0];
 			var $item = $(item);
@@ -283,11 +304,11 @@ function createSignals(renderableObjects) {
 			if (direction === 'Downstream') {
 				angle += Math.PI;
 			}
-			
+
 			parentObject.rotation.set(0.0, angle, 0.0);
 			var x =  - (point[0] - offset[0]);
 			var y = point[1] - offset[1];
-			parentObject.position.set(x, 0.0, y);			
+			parentObject.position.set(x, 0.0, y);
 			scene.add(parentObject);
 
 			if (index == 0) {
@@ -356,6 +377,98 @@ function createFurniture(renderableObjects, modelPath) {
 			mesh.position.set(x, 0.0, y);
 			scene.add(mesh);
 		});
+	});
+}
+
+function createBuildings(tracks) {
+	var buildingMaterials = [];
+	buildingMaterials.push(new THREE.MeshPhongMaterial({
+			color: 0xff0000,
+			side: THREE.DoubleSide,
+			transparent: true,
+			opacity: 0.5
+		}));
+	buildingMaterials.push(new THREE.MeshPhongMaterial({
+			color: 0x00ff00,
+			side: THREE.DoubleSide,
+			transparent: true,
+			opacity: 0.5
+		}));
+		buildingMaterials.push(new THREE.MeshPhongMaterial({
+			color: 0x0000ff,
+			side: THREE.DoubleSide			
+		}));
+	$.each(tracks.list, function (index, track) {
+		var coords = getGmlCoords(track);
+		var wktStr = 'LINESTRING (' + wktCoordStr(coords) + ')';
+		getBuildingsWkt(wktStr, 500, function (data) {
+			$.each(data.features, function (index, feature) {
+				var bid = feature.id;
+				//console.log(bid +' index: '+buildingIds.indexOf(bid));
+				reportBuilding(feature);
+				if(buildingIds.indexOf(bid) === -1 ){
+					buildingIds.push(bid);
+					createBuildingMesh(feature, buildingMaterials);
+				}
+				
+			});
+		});
+	});
+
+	//getBuildings(trackBufferGeom, function(data) {
+	//	console.log('data ontvangen');
+	//	console.log(data);
+	//});
+
+}
+
+function reportBuilding(feature){
+	var polyArray = feature.geometry.coordinates[0];
+	if ("Polygon" === feature.geometry.type) {
+		polyArray = [];
+		polyArray.push(feature.geometry.coordinates[0]);
+	}
+	if(polyArray.length > 1){
+		console.log(feature);
+	}
+}
+
+function createBuildingMesh(feature, buildingMaterials) {
+	var polyArray = feature.geometry.coordinates[0];
+	if ("Polygon" === feature.geometry.type) {
+		polyArray = [];
+		polyArray.push(feature.geometry.coordinates[0]);
+	}
+	var matIndex = 0;
+	if ('woonfunctie' === feature.properties.gebruiksdoel) {
+		matIndex = 1;
+	}
+	if('pand.5072581' === feature.id){
+		matIndex = 2;
+	}
+	var material = buildingMaterials[matIndex];
+	$.each(polyArray, function (index, pc) {
+		var x =  - (pc[0][0] - offset[0]);
+		var y = pc[0][1] - offset[1];
+		var shape = new THREE.Shape();
+		shape.moveTo(x, y);
+		for (var i = 1; i < pc.length; i++) {
+			var ix =  - (pc[i][0] - offset[0]);
+			var iy = pc[i][1] - offset[1];
+			shape.lineTo(ix, iy);
+		}		
+		var extrudeSettings = {
+			steps: 1,
+			amount: 3,
+			bevelEnabled: false
+		};
+
+		var geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+		var mesh = new THREE.Mesh(geometry, material);
+		mesh.rotation.x = Math.PI / 2;
+		mesh.position.y = 3*(index+1);
+		scene.add(mesh);
 	});
 }
 
@@ -503,8 +616,8 @@ function updateControlSpeed() {
 
 function render(dt) {
 	if (animateCamera) {
-		var camH = 3.0;
-		var camSpeed = 15;
+		var camH = 2.5;
+		var camSpeed = 20;
 		var dur = Date.now() - animationStart;
 		var dist = (dur / 1000.0) * camSpeed;
 		var pathLength = animationPath.getLength();
