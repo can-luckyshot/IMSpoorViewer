@@ -384,19 +384,15 @@ function createBuildings(tracks) {
 	var buildingMaterials = [];
 	buildingMaterials.push(new THREE.MeshPhongMaterial({
 			color: 0xff0000,
-			side: THREE.DoubleSide,
+			//side: THREE.DoubleSide,
 			transparent: true,
 			opacity: 0.5
 		}));
 	buildingMaterials.push(new THREE.MeshPhongMaterial({
 			color: 0x00ff00,
-			side: THREE.DoubleSide,
+			//side: THREE.DoubleSide,
 			transparent: true,
 			opacity: 0.5
-		}));
-		buildingMaterials.push(new THREE.MeshPhongMaterial({
-			color: 0x0000ff,
-			side: THREE.DoubleSide			
 		}));
 	$.each(tracks.list, function (index, track) {
 		var coords = getGmlCoords(track);
@@ -442,9 +438,6 @@ function createBuildingMesh(feature, buildingMaterials) {
 	var matIndex = 0;
 	if ('woonfunctie' === feature.properties.gebruiksdoel) {
 		matIndex = 1;
-	}
-	if('pand.5072581' === feature.id){
-		matIndex = 2;
 	}
 	var material = buildingMaterials[matIndex];
 	$.each(polyArray, function (index, pc) {
