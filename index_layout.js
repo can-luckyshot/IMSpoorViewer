@@ -56,13 +56,19 @@ function fillLayerSwitcher(layers, groupVisible) {
 			if (lyr instanceof ol.layer.Vector) {
 				var f = lyr.getSource().getFeatures();
 				var badge = $('<span></span>').text('' + f.length).addClass('badge').addClass('pull-right');
-				if (f[0].get('color')) {
-					badge.css({
-						"backgroundColor": f[0].get('color')
-					});
+				if (f.length > 0) {
+					if (f[0].get('color')) {
+						badge.css({
+							"backgroundColor": f[0].get('color')
+						});
+					} else {
+						badge.css({
+							"backgroundColor": f[0].get('stroke_color')
+						});
+					}
 				} else {
 					badge.css({
-						"backgroundColor": f[0].get('stroke_color')
+						"backgroundColor":  '#c0c0c0'
 					});
 				}
 				item.append(badge);

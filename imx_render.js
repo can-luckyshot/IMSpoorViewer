@@ -127,10 +127,7 @@ function loadDemoFile() {
 }
 
 function parseAndRenderIMX(xmlDoc, src) {
-	var objectsWithGeom = $(xmlDoc).find('Geometry').parent();
-	if (objectsWithGeom.length == 0) {
-		objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
-	}
+	var objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
 	var typeMap = new Object();
 	var i = 0;
 	objectsWithGeom.each(function (index, objectWithGeom) {
@@ -161,7 +158,7 @@ function buildTypeLayers(typeMap) {
 		var renderableObjects = entry.list;
 		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
-		var geom = location.children[0];
+		var geom = $(location).children()[0];
 		var vectorLayer = new ol.layer.Vector({
 				'title': type,
 				style: styleFunction,
@@ -198,8 +195,7 @@ function getPoslist($item) {
 	if (!locations) {
 		return undefined;
 	}
-	var location = $item.find('GeographicLocation')[0];
-	var geom = location.children[0];
+	var geom = $(locations[0]).children()[0];
 	return $(geom).text().trim();
 }
 
@@ -226,6 +222,9 @@ function createPointLayer(title, color, items, vectorLayer) {
 			feature.setId(puic);
 			addAttributes(feature, item);
 			vectorLayer.getSource().addFeature(feature);
+		}
+		else{
+			console.log('poslist undefined');
 		}
 	});
 	pointLayers.getLayers().push(vectorLayer);
@@ -268,6 +267,9 @@ function createLineStringLayer(title, color, items, vectorLayer) {
 			feature.setId(puic);
 			vectorLayer.getSource().addFeature(feature);
 		}
+		else{
+			console.log('poslist undefined');
+		}
 	});
 	lineLayers.getLayers().push(vectorLayer);
 }
@@ -302,6 +304,9 @@ function createPolygonLayer(title, color, items, vectorLayer) {
 			feature.setId(puic);
 			vectorLayer.getSource().addFeature(feature);
 		}
+		else{
+			console.log('poslist undefined');
+		}
 	});
 	polygonLayers.getLayers().push(vectorLayer);
 }
@@ -310,8 +315,9 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 	$.each(items, function (index, item) {
 		var $item = $(item);
 		var polys = $item.find('Polygon');
+		console.log(title+'['+index+'] '+ polys.length + ' Polygons');
 		$.each(polys, function (index, poly) {
-			var poslist = $(poly).text().trim();
+			var poslist = getPoslist($(poly));
 			if (poslist != undefined) {
 				var coordinates = [];
 				var points = poslist.split(' ');
@@ -336,6 +342,9 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 					});
 				feature.setId(puic);
 				vectorLayer.getSource().addFeature(feature);
+			}
+			else{
+			console.log('poslist undefined');
 			}
 		})
 	});
