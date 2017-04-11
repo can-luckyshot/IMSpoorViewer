@@ -27,23 +27,24 @@ function buildDataTables(typeMap) {
 		var table = $('<table></table>').addClass('table table-bordered');
 		var thead = $('<thead></thead>');
 		var tr = $('<tr></tr>');
-		var dataObject = renderableObjects[0];
-		var attrs = dataObject.attributes;
-		var $do = $(dataObject);
-		var headers = [];
-		for (var i = 0; i < attrs.length; i++) {
-			headers.push(attrs[i].nodeName);
-			tr.append($('<th>' + attrs[i].nodeName + '</th>'));
-		}
+		var headers = new Object();
+		$.each(renderableObjects, function (index, dataObject) {
+			$.each(dataObject.attributes, function (index,attrib) {
+				headers[attrib.nodeName] = attrib.nodeName;
+			});
+		});
+		$.each(headers, function (header, value) {
+			tr.append($('<th>' + header + '</th>'));
+		});
 		thead.append(tr);
 		table.append(thead);
 		var tbody = $('<tbody></tbody>');
 		for (var i = 0; i < renderableObjects.length; i++) {
 			var row = $('<tr></tr>');
 
-			for (var j = 0; j < headers.length; j++) {
-				var value = $(renderableObjects[i]).attr(headers[j]);
-				if (headers[j].toLowerCase().includes('puic')) {
+			$.each(headers, function (header, value) {
+				var value = $(renderableObjects[i]).attr(header);
+				if (header.toLowerCase().indexOf('puic') > -1) {
 					var link = $('<a></a>').text(value).on('click', jumpToFeature);
 					var rowData = $('<td></td>').append(link);
 					row.append(rowData);
@@ -51,8 +52,7 @@ function buildDataTables(typeMap) {
 					var rowData = $('<td></td>').text(value);
 					row.append(rowData);
 				}
-			}
-			row.append(rowData);
+			});
 			tbody.append(row);
 		}
 		table.append(tbody);
@@ -75,9 +75,12 @@ function jumpToFeature(evt) {
 	var puic = event.target.text;
 	console.log('jump to puic: ' + puic);
 	var layers = vectorLayers.getLayers().getArray();
+	console.log('layers: ' + layers.length);
 	for (var i = 0; i < layers.length; i++) {
 		var subLayers = layers[i].getLayers().getArray();
+		console.log('subLayers: ' + subLayers.length);
 		for (var j = 0; j < subLayers.length; j++) {
+			console.log('subLayer: ' + subLayers[j].get('title'));
 			var feature = subLayers[j].getSource().getFeatureById(puic);
 			if (feature) {
 				console.log('gevonden: ' + feature);
