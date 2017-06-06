@@ -159,7 +159,7 @@ function buildTypeLayers(typeMap) {
 		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
 		var geom = $(location).children()[0];
-		var vectorLayer = new ol.layer.Vector({
+		var vectorLayer = new ol.layer.ImageVector({
 				'title': type,
 				style: styleFunction,
 				source: new ol.source.Vector({})
