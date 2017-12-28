@@ -122,19 +122,19 @@ function popupSingleClick(evt) {
 }
 function loadDemoFile() {
 	$.get('file.xml', function (data) {
-		parseAndRenderIMX(data, 'file.xml');
+		parseAndRenderIMX(data, 'poc_data.xml');
 	});
 }
 
 function parseAndRenderIMX(xmlDoc, src) {
-	var objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
+	var objectsWithGeom = $(xmlDoc).find('GRSSection');
 	var typeMap = new Object();
 	var i = 0;
 	objectsWithGeom.each(function (index, objectWithGeom) {
 		var nodeName = objectWithGeom.nodeName;
 		var entry = typeMap[nodeName];
 		if (entry == undefined) {
-			var color = getColor(i++);
+			var color = '#c0c0c0';
 			entry = new Object({
 					color: color,
 					list: []
@@ -145,12 +145,12 @@ function parseAndRenderIMX(xmlDoc, src) {
 	});
 	buildTypeLayers(typeMap);
 	setTableTypeMap(typeMap);
-	buildScene(typeMap);
-	buildGraph();
+	
+	
 	updateLayerSwitcher();
 }
 
-function buildGraph() {}
+
 
 function buildTypeLayers(typeMap) {
 	$.each(typeMap, function (type, entry) {
