@@ -143,10 +143,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 		}
 		entry.list.push(objectWithGeom);
 	});
-	buildTypeLayers(typeMap);
-	setTableTypeMap(typeMap);
-	
-	
+	buildTypeLayers(typeMap);	
 	updateLayerSwitcher();
 }
 
