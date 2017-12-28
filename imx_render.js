@@ -121,7 +121,7 @@ function popupSingleClick(evt) {
 	}
 }
 function loadDemoFile() {
-	$.get('file.xml', function (data) {
+	$.get('poc_data.xml', function (data) {
 		parseAndRenderIMX(data, 'poc_data.xml');
 	});
 }
