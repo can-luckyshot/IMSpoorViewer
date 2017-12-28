@@ -108,6 +108,5 @@ $(function () {
 	initMap();
 	updateLayerSwitcher(map);
 	applyInitialUIState();
-	applyMargins();
-	initModelViewer();
+	applyMargins();	
 });
