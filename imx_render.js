@@ -42,16 +42,14 @@ function initDragAndDrop() {
 }
 // global for popup
 var popup;
-var pointLayers = makeGroup('Punt-Objecten');
+//var pointLayers = makeGroup('Punt-Objecten');
 var lineLayers = makeGroup('Lijn-Objecten');
-var polygonLayers = makeGroup('Gebieden');
+//var polygonLayers = makeGroup('Gebieden');
 var baseLayers = makeGroup('Ondergrond');
 var vectorLayers = new ol.layer.Group({
 		title: 'IMX Objecten',
 		layers: [
-			polygonLayers,
-			lineLayers,
-			pointLayers,
+			lineLayers
 		]
 	});
 
@@ -69,7 +67,8 @@ function initMap() {
 	proj4.defs("EPSG:28992", "+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.040,49.910,465.840,-0.40939,0.35971,-1.86849,4.0772");
 	var tile = new ol.layer.Tile({
 			'title': 'Open Street Map',
-			source: new ol.source.OSM()
+			source: new ol.source.OSM(),
+			opacity: 0.5
 		});
 	baseLayers.getLayers().push(tile);
 	map = new ol.Map({
@@ -134,7 +133,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 		var nodeName = objectWithGeom.nodeName;
 		var entry = typeMap[nodeName];
 		if (entry == undefined) {
-			var color = '#c0c0c0';
+			var color = '#696969';
 			entry = new Object({
 					color: color,
 					list: []
@@ -143,11 +142,9 @@ function parseAndRenderIMX(xmlDoc, src) {
 		}
 		entry.list.push(objectWithGeom);
 	});
-	buildTypeLayers(typeMap);	
+	buildTypeLayers(typeMap);
 	updateLayerSwitcher();
 }
-
-
 
 function buildTypeLayers(typeMap) {
 	$.each(typeMap, function (type, entry) {
@@ -183,7 +180,7 @@ function getColor(index) {
 	var s = 70; // saturation 30-100%
 	var l = 40; // lightness 30-70%
 	var color = 'hsl(' + h + ',' + s + '%,' + l + '%)';
-	//console.log('index: ' + index + ' - ' + color);
+	console.log('index: ' + index + ' - ' + color);
 	return color;
 }
 
@@ -334,10 +331,24 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 	polygonLayers.getLayers().push(vectorLayer);
 }
 
+function setGRSSectionState(name, state) {
+	var ids = findGRSSectionId(name);
+	if (ids.length > 0) {
+		$.each(map.getLayers(), function (index, lyr) {
+			if (lyr.name == 'GRSSection') {}
+			$.each(ids, function (index, id) {
+				var feature = lyr.getFeature(id);
+				feature.setStrokeColor('#FF0000');
+			});
+		});
+	}
+}
+
 function createMultiLineStringLayer(title, color, items, vectorLayer) {
+	console.log('creating multilinestring');
 	$.each(items, function (index, item) {
 		var $item = $(item);
-		var lines = $item.find('LineString');
+		var lines = $item.find('gml\\:LineString');
 		var lineGeoms = [];
 		$.each(lines, function (index, line) {
 			var poslist = $(line).text().trim();
@@ -345,16 +356,17 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 				lineGeoms.push(getCoordinates(poslist));
 			}
 		});
-		var polygon = new ol.geom.MultiLineString(lineGeoms);
-		polygon.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+		console.log($item.attr('name') + ' multiline: ' + lineGeoms.length);
+		var multiline = new ol.geom.MultiLineString(lineGeoms);
+		multiline.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 		var puic = getPuic($item);
 		var feature = new ol.Feature({
-				geometry: polygon,
+				geometry: multiline,
 				id: puic,
 				name: $item.attr('name'),
 				label: $item.attr('name'),
 				imxType: title,
-				text_color: color,
+				text_color: '#000000',
 				stroke_color: color
 			});
 		feature.setId(puic);
