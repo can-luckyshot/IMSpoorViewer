@@ -3,8 +3,8 @@ var lookup = [['GD', '139AT', '155349', '', '8293e0ad-f363-4fe8-b02e-b57e829d49e
 
 function findGRSSectionId(name) {
 	for (var i = 0; i < lookup.length; i++) {
-		if (lookup[1] == name){
-			return lookup[4].split('|');
+		if (lookup[i][1] == name){
+			return lookup[i][4].split('|');
 		}
 	}
 	return [];
