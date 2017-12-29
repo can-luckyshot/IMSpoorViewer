@@ -42,16 +42,7 @@ function initDragAndDrop() {
 }
 // global for popup
 var popup;
-//var pointLayers = makeGroup('Punt-Objecten');
-var lineLayers = makeGroup('Lijn-Objecten');
-//var polygonLayers = makeGroup('Gebieden');
-var baseLayers = makeGroup('Ondergrond');
-var vectorLayers = new ol.layer.Group({
-		title: 'IMX Objecten',
-		layers: [
-			lineLayers
-		]
-	});
+var sectionLayer;
 
 function makeGroup(title) {
 	var group = new ol.layer.Group({
@@ -70,11 +61,10 @@ function initMap() {
 			source: new ol.source.OSM(),
 			opacity: 0.5
 		});
-	baseLayers.getLayers().push(tile);
 	map = new ol.Map({
 			target: 'map',
 			'title': 'Base map',
-			layers: [baseLayers, vectorLayers],
+			layers: [tile],
 			view: new ol.View({
 				center: ol.proj.fromLonLat([5.3, 52.23]),
 				zoom: 8
@@ -122,6 +112,7 @@ function popupSingleClick(evt) {
 function loadDemoFile() {
 	$.get('poc_data.xml', function (data) {
 		parseAndRenderIMX(data, 'poc_data.xml');
+		//setGRSSectionState('159BT', 'bezet');
 	});
 }
 
@@ -158,6 +149,9 @@ function buildTypeLayers(typeMap) {
 				style: styleFunction,
 				source: new ol.source.Vector({})
 			});
+		if (type == 'GRSSection') {
+			sectionLayer = vectorLayer;
+		}
 		if (geom.nodeName == 'gml:LineString') {
 			createLineStringLayer(type, color, renderableObjects, vectorLayer)
 		} else if (geom.nodeName == 'gml:Point') {
@@ -331,21 +325,32 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 	polygonLayers.getLayers().push(vectorLayer);
 }
 
-function setGRSSectionState(name, state) {
+function setGRSSectionState(name, color) {
 	var ids = findGRSSectionId(name);
 	if (ids.length > 0) {
-		$.each(map.getLayers(), function (index, lyr) {
-			if (lyr.name == 'GRSSection') {}
-			$.each(ids, function (index, id) {
-				var feature = lyr.getFeature(id);
-				feature.setStrokeColor('#FF0000');
-			});
+		$.each(map.getLayers().getArray(), function (index, lyr) {
+			if (lyr.get('title') == 'GRSSection') {
+				$.each(ids, function (index, id) {
+					setSectionStyle(lyr, id, color);
+				});
+			}
 		});
+	} else {
+		console.log('no id found for: ' + name);
+	}
+}
+
+function setSectionStyle(lyr, id,color) {
+	var source = lyr.getSource();
+	var feature = source.getFeatureById(id);
+	if (feature) {
+		feature.set('stroke_color',color);
+	} else {
+		console.log('feature not found: ' + id);
 	}
 }
 
 function createMultiLineStringLayer(title, color, items, vectorLayer) {
-	console.log('creating multilinestring');
 	$.each(items, function (index, item) {
 		var $item = $(item);
 		var lines = $item.find('gml\\:LineString');
@@ -356,7 +361,6 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 				lineGeoms.push(getCoordinates(poslist));
 			}
 		});
-		console.log($item.attr('name') + ' multiline: ' + lineGeoms.length);
 		var multiline = new ol.geom.MultiLineString(lineGeoms);
 		multiline.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 		var puic = getPuic($item);
@@ -373,7 +377,7 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 		addAttributes(feature, item);
 		vectorLayer.getSource().addFeature(feature);
 	});
-	lineLayers.getLayers().push(vectorLayer);
+	map.getLayers().push(vectorLayer);
 }
 
 var nsResolver = function (element) {
@@ -422,7 +426,7 @@ var styleFunction = function (feature, resolution) {
 					offsetY: 0,
 				})
 			});
-	} else if (ft == 'LineString' || ft == 'MultiLineString') {
+	} else if (ft == 'LineString' || ft == 'MultiLineString') {		
 		style = new ol.style.Style({
 				stroke: new ol.style.Stroke({
 					color: feature.get('stroke_color'),
