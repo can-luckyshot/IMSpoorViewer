@@ -222,7 +222,7 @@ function createPointLayer(title, color, items, vectorLayer) {
 		var $item = $(item);
 		var poslist = getPoslist($item);
 		if (poslist != undefined) {
-			var coordValues = poslist.replace(',', ' ').split(' ');
+			var coordValues = poslist.replace(/,/g, ' ').split(' ');
 			var point = new ol.geom.Point([coordValues[0], coordValues[1]]);
 			point.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 			var puic = getPuic($item);
