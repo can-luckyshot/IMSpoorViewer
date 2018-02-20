@@ -12,7 +12,7 @@ var ahn_url = "http://geodata.nationaalgeoregister.nl/ahn2/wms?";
 function getBuildings(geom, onSucces) {
 	var writer = new jsts.io.WKTWriter();
 	var wktMLS = writer.write(geom);
-	var pand_url = 'http://geodata.nationaalgeoregister.nl/bag/wfs?';
+	var pand_url = 'https://geodata.nationaalgeoregister.nl/bag/wfs?';
 	var params = 'request=GetFeature&';
 	params += 'service=WFS&';
 	params += 'typeName=bag:pand&';
@@ -23,7 +23,7 @@ function getBuildings(geom, onSucces) {
 }
 
 function getBuildingsWkt(wktMLS,bufferSize, onSucces) {
-	var pand_url = 'http://geodata.nationaalgeoregister.nl/bag/wfs?';
+	var pand_url = 'https://geodata.nationaalgeoregister.nl/bag/wfs?';
 	var params = 'request=GetFeature&';
 	params += 'service=WFS&';
 	params += 'typeName=bag:pand&';
