@@ -159,10 +159,17 @@ function buildTypeLayers(typeMap) {
 		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
 		var geom = $(location).children()[0];
-		var vectorLayer = new ol.layer.ImageVector({
+
+		var vectorLayer = new ol.layer.Image({
 				'title': type,
-				style: styleFunction,
-				source: new ol.source.Vector({})
+				'datalayer': 'yes',
+				source: new ol.source.ImageVector({
+					source: new ol.source.Vector({
+						'title': type,
+						//style: styleFunction,
+					}),
+					style: styleFunction
+				})
 			});
 		if (geom.nodeName == 'gml:LineString') {
 			createLineStringLayer(type, color, renderableObjects, vectorLayer)
@@ -236,7 +243,7 @@ function createPointLayer(title, color, items, vectorLayer) {
 				});
 			feature.setId(puic);
 			addAttributes(feature, item);
-			vectorLayer.getSource().addFeature(feature);
+			vectorLayer.getSource().getSource().addFeature(feature);
 		} else {
 			console.log('poslist undefined');
 		}
@@ -271,7 +278,7 @@ function createLineStringLayer(title, color, items, vectorLayer) {
 				});
 			feature.setId(puic);
 			addAttributes(feature, item);
-			vectorLayer.getSource().addFeature(feature);
+			vectorLayer.getSource().getSource().addFeature(feature);
 		} else {
 			console.log('poslist undefined');
 		}
@@ -299,7 +306,7 @@ function createPolygonLayer(title, color, items, vectorLayer) {
 				});
 			feature.setId(puic);
 			addAttributes(feature, item);
-			vectorLayer.getSource().addFeature(feature);
+			vectorLayer.getSource().getSource().addFeature(feature);
 		} else {
 			console.log('poslist undefined');
 		}
@@ -332,7 +339,7 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 			});
 		feature.setId(puic);
 		addAttributes(feature, item);
-		vectorLayer.getSource().addFeature(feature);
+		vectorLayer.getSource().getSource().addFeature(feature);
 	});
 	polygonLayers.getLayers().push(vectorLayer);
 }
@@ -362,7 +369,7 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 			});
 		feature.setId(puic);
 		addAttributes(feature, item);
-		vectorLayer.getSource().addFeature(feature);
+		vectorLayer.getSource().getSource().addFeature(feature);
 	});
 	lineLayers.getLayers().push(vectorLayer);
 }

@@ -425,7 +425,7 @@ function reportBuilding(feature){
 		polyArray.push(feature.geometry.coordinates[0]);
 	}
 	if(polyArray.length > 1){
-		console.log(feature);
+		//console.log(feature);
 	}
 }
 

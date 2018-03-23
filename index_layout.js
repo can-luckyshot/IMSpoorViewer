@@ -52,9 +52,10 @@ function fillLayerSwitcher(layers, groupVisible) {
 
 			item.append(icon);
 			item.append(lyr.get('title'));
-
-			if (lyr instanceof ol.layer.Vector) {
-				var f = lyr.getSource().getFeatures();
+			//console.log('type: '+lyr.get('frankType'));
+			if (lyr.get('datalayer')) {
+				console.log('ol.layer.Image');
+				var f = lyr.getSource().getSource().getFeatures();
 				var badge = $('<span></span>').text('' + f.length).addClass('badge').addClass('pull-right');
 				if (f.length > 0) {
 					if (f[0].get('color')) {

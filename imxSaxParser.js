@@ -11,7 +11,7 @@ function loadXml(file) {
 	var chunkReaderBlock = null;
 	var block = 0;
 	var parser = sax.parser(false, {
-			trim : true
+			trim: true
 		});
 	configParser(parser);
 	//console.log(parser);
@@ -44,6 +44,7 @@ function loadXml(file) {
 
 	// now let's start the read with the first block
 	chunkReaderBlock(offset, chunkSize, file);
+	
 }
 
 function report() {
@@ -57,9 +58,14 @@ function report() {
 		var type = typeLayers.types[i];
 		console.log(type + ': ' + typeLayers[type].length + ' items');
 	}
+	//console.log(JSON.stringify(geojson));
 }
 
 function initGlobals() {
+	geojson = {
+		type: "FeatureCollection",
+		features: []
+	};
 	renderableObjects = 0;
 	tagBuffer = [];
 	closingTagName = null;
@@ -99,7 +105,8 @@ function configParser(parser) {
 	parser['onclosetag'] = function (tag) {
 		tagBuffer.push(tag);
 		if (tag === closingTagName) {
-			buildGMLObject(tagBuffer);
+			//buildGMLObject(tagBuffer);
+			buildGeoJsonFeature(tagBuffer);
 			tagBuffer = [];
 			closingTagName = null;
 		}
@@ -110,28 +117,111 @@ function buildGMLObject(tagBuffer) {
 	var type = tagBuffer[0].name;
 	console.log('build: ' + type);
 	var geomType;
-	var coords = [];
+	var coords = '';
+	for (var i = 0; i < tagBuffer.length; i++) {
+		var tagName = tagBuffer[i].name;
+		if (tagName && tagName.startsWith('GML')) {
+			if (tagName === 'GML:COORDINATES') {
+				coords = tagBuffer[i + 1];
+			} else if (geomType == undefined) {
+				geomType = tagName;
+			}
+
+		} else if (tagBuffer[i] === 'GEOGRAPHICLOCATION') {
+			break;
+		}
+	}
+	if (geomType && coords.length > 0) {
+		console.log('adding: ' + geomType + '  -> coords:' + coords.length);
+		addToLayer(type, {
+			geomType,
+			coords
+		});
+	}
+	//var coordValues = poslist.replace(',', ' ').split(' ');
+
+	//console.log('build: ['+renderableObjects +'] ' + tagBuffer[0].name);
+}
+
+function buildGeoJsonFeature(tagBuffer) {
+	var type = tagBuffer[0].name;
+	var puic = tagBuffer[0].puic;
+	var f = {
+		type: 'Feature',
+		id: puic,
+		properties: {
+			type: type
+		},
+		geometry: makeGJGeom(tagBuffer)
+		
+	};
+	geojson.features.push(f);
+}
+
+function makeGJGeom(tagBuffer) {
+	var geomType;
+	var coords=[];
 	for (var i = 0; i < tagBuffer.length; i++) {
 		var tagName = tagBuffer[i].name;
 		if (tagName && tagName.startsWith('GML')) {
 			if (tagName === 'GML:COORDINATES') {
 				coords.push(tagBuffer[i + 1]);
-			} else if(geomType == undefined){
+			} else if (geomType == undefined) {
 				geomType = tagName;
 			}
-			
-		}
-		else if(tagBuffer[i] === 'GEOGRAPHICLOCATION'){
+
+		} else if (tagBuffer[i] === 'GEOGRAPHICLOCATION') {
 			break;
 		}
 	}
 	if (geomType && coords.length > 0) {
-		console.log('adding: '+geomType+'  -> coords:'+coords.length);
-		addToLayer(type, {geomType,coords});
+		console.log('adding: ' + geomType + '  -> coords:' + coords.length);
+		return {
+			type: toGJType(geomType),
+			coordinates: toGJCoords(coords)
+		};
 	}
-	//var coordValues = poslist.replace(',', ' ').split(' ');
+	return undefined;
+}
 
-	//console.log('build: ['+renderableObjects +'] ' + tagBuffer[0].name);
+function toGJCoords(coordStrings){
+	if(coordStrings.length == 1){
+		return toCoordArray(coordStrings[0]);
+	}
+	else{
+		var coordArray = [];
+		$.each(coordStrings, function (index, coordString) {
+			coordArray.push(toCoordArray(coordString));
+		});
+		return coordArray;
+	}
+}
+
+function toCoordArray(coordString){
+	var coordArray = [];
+	var vertexStrings = coordString.split(' ');
+	$.each(vertexStrings, function (index, vertexString) {
+		var vertexValues = vertexString.split(',');
+		var point = [];
+		$.each(vertexValues, function (index, vertexValue) {
+			point.push(parseFloat(vertexValue));
+		});
+		coordArray.push(point);
+	});
+	return coordArray;
+}
+
+function toGJType(type){
+	if('GML:POINT' == type){
+		return 'Point';
+	}
+	else if('GML:LINESTRING' == type){
+		return 'LineString';
+	}
+	else if('GML:POLYGON' == type){
+		return 'Polygon';
+	}
+	return type;
 }
 
 function addToLayer(type, item) {
