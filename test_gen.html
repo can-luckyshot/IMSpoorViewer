@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL"></script>
+		<title>IMX Testfile Generator</title>
+		
+		<script type="text/javascript" src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+	</head>
+	<style>
+	#droptarget { position: absolute; top: 10px; bottom: 0px; left: 0px; right: 0px; border: 1px solid rgba(0, 0, 0, 0.9);}
+	#testOutput { position: absolute; top: 50px; bottom: 0px; left: 0px; right: 0px; border: 1px solid rgba(0, 0, 0, 0.9); }
+	</style>
+
+	<body>
+	<div id="droptarget">Drag input here</div>
+	<div id="testOutput">Output will be displayed here</div>
+	</body>
+		<script>
+	initDragAndDrop();
+	
+	function handleFileSelect(evt) {
+	evt.stopPropagation();
+	evt.preventDefault();
+
+	var files = evt.dataTransfer.files; // FileList object.
+
+	// files is a FileList of File objects. List some properties.
+	var output = [];
+	$.each(files, function (index, f) {
+		var reader = new FileReader();
+		reader.onload =
+			(function (file) {
+			var fileName = file.name;
+			console.log('file hallo: ' + fileName);
+			return function (event) {
+				var text = event.target.result;
+				var parser = new DOMParser();
+				var xmlDoc = parser.parseFromString(text, "text/xml");
+				generateTestFile(xmlDoc,fileName);
+			};
+		})(f);
+		reader.onerror = function (event) {
+			console.log('file-error: ' + event.target.error.code);
+		};
+		reader.readAsText(f);
+	});
+}
+
+function handleDragOver(evt) {
+	evt.stopPropagation();
+	evt.preventDefault();
+	evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+}
+
+function initDragAndDrop() {
+	// Setup the dnd listeners.
+	var dropZone = document.getElementById('droptarget');
+	dropZone.addEventListener('dragover', handleDragOver, false);
+	dropZone.addEventListener('drop', handleFileSelect, false);
+	// setup projectie
+}
+
+function generateTestFile(xmlDoc,fileName){
+$('#droptarget').text('file: '+fileName);
+var xmlText = new XMLSerializer().serializeToString(xmlDoc);
+$('#testOutput').text(xmlText);
+}
+	</script>
+</html>
