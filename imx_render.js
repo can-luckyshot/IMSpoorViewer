@@ -112,7 +112,6 @@ function popupSingleClick(evt) {
 function loadDemoFile() {
 	$.get('poc_data.xml', function (data) {
 		parseAndRenderIMX(data, 'poc_data.xml');
-		//setGRSSectionState('159BT', 'bezet');
 	});
 }
 
@@ -134,7 +133,100 @@ function parseAndRenderIMX(xmlDoc, src) {
 		entry.list.push(objectWithGeom);
 	});
 	buildTypeLayers(typeMap);
+	buildWerkzoneLayer(typeMap);
+	buildBovenleidinggroepLayer(typeMap);
 	updateLayerSwitcher();
+}
+
+function buildWerkzoneLayer(typeMap) {
+	var vectorLayer = new ol.layer.Vector({
+			'title': type,
+			style: styleFunction,
+			source: new ol.source.Vector({})
+		});
+	var items = [];
+	$each(werkzones, function (index, werkzone) {
+		var item = new Object({
+				color: '#696969',
+				secties: [],
+				customId: werkzone
+			});
+		var sectionIds = findWerkzoneIds(werkzone);
+		for (var i = 0; i < sectionIds.length; i++) {
+			$each(typeMap['GRSSection'], function (type, entry) {
+				$each(entry.list, function (index, renderableObject) {
+					if (sectionIds[i] === getPuic(renderableObject)) {
+						item.secties.push(renderableObject);
+					}
+				});
+			});
+			items.push(item);
+		}
+	});
+	createCustomLayer('Werkzone', '#696969', items, vectorLayer);
+}
+
+function buildBovenleidinggroepLayer(typeMap) {
+	var vectorLayer = new ol.layer.Vector({
+			'title': type,
+			style: styleFunction,
+			source: new ol.source.Vector({})
+		});
+	var items = [];
+	$each(bvlGroepen, function (index, bvlGroep) {
+		var item = new Object({
+				color: '#696969',
+				secties: [],
+				customId: bvlGroep
+			});
+		var sectionIds = findBvlIds(werkzone);
+		for (var i = 0; i < sectionIds.length; i++) {
+			$each(typeMap['GRSSection'], function (type, entry) {
+				$each(entry.list, function (index, renderableObject) {
+					if (sectionIds[i] === getPuic(renderableObject)) {
+						item.secties.push(renderableObject);
+					}
+				});
+			});
+			items.push(item);
+		}
+	});
+	createCustomLayer('BVL-Groep', '#696969', items, vectorLayer);
+}
+// speciale functie die een layer van objecten bouwd waarvan de geoms gecombineerd moeten worden.
+function createCustomLayer(title, color, customObjects, vectorLayer) {
+	console.log('creating custom layer ' + title);
+	$.each(customObjects, function (index, customObject) {
+		var lineGeoms = [];
+		//per sectie van werkzone de geom
+		$each(customObject.sections, function (index, section) {
+			var $item = $(section);
+			var lines = $item.find('gml\\:LineString');
+			$.each(lines, function (index, line) {
+				var poslist = $(line).text().trim();
+				if (poslist != undefined) {
+					lineGeoms.push(getCoordinates(poslist));
+				}
+			});
+		});
+		//		console.log($item.attr('name') + ' multiline: ' + lineGeoms.length);
+		var multiline = new ol.geom.MultiLineString(lineGeoms);
+		multiline.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+		var puic = customObject.customId;
+		var feature = new ol.Feature({
+				geometry: multiline,
+				id: puic,
+				name: puic,
+				label: puic,
+				imxType: title,
+				text_color: '#000000',
+				stroke_color: color
+			});
+		feature.setId(puic);
+		addAttributes(feature, item);
+		vectorLayer.getSource().addFeature(feature);
+	});
+	map.getLayers().push(vectorLayer);
 }
 
 function buildTypeLayers(typeMap) {
@@ -149,9 +241,6 @@ function buildTypeLayers(typeMap) {
 				style: styleFunction,
 				source: new ol.source.Vector({})
 			});
-		if (type == 'GRSSection') {
-			sectionLayer = vectorLayer;
-		}
 		if (geom.nodeName == 'gml:LineString') {
 			createLineStringLayer(type, color, renderableObjects, vectorLayer)
 		} else if (geom.nodeName == 'gml:Point') {
@@ -325,32 +414,8 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 	polygonLayers.getLayers().push(vectorLayer);
 }
 
-function setGRSSectionState(name, color) {
-	var ids = findGRSSectionId(name);
-	if (ids.length > 0) {
-		$.each(map.getLayers().getArray(), function (index, lyr) {
-			if (lyr.get('title') == 'GRSSection') {
-				$.each(ids, function (index, id) {
-					setSectionStyle(lyr, id, color);
-				});
-			}
-		});
-	} else {
-		console.log('no id found for: ' + name);
-	}
-}
-
-function setSectionStyle(lyr, id,color) {
-	var source = lyr.getSource();
-	var feature = source.getFeatureById(id);
-	if (feature) {
-		feature.set('stroke_color',color);
-	} else {
-		console.log('feature not found: ' + id);
-	}
-}
-
 function createMultiLineStringLayer(title, color, items, vectorLayer) {
+	console.log('creating multilinestring');
 	$.each(items, function (index, item) {
 		var $item = $(item);
 		var lines = $item.find('gml\\:LineString');
@@ -361,6 +426,7 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 				lineGeoms.push(getCoordinates(poslist));
 			}
 		});
+		//		console.log($item.attr('name') + ' multiline: ' + lineGeoms.length);
 		var multiline = new ol.geom.MultiLineString(lineGeoms);
 		multiline.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 		var puic = getPuic($item);
@@ -426,7 +492,7 @@ var styleFunction = function (feature, resolution) {
 					offsetY: 0,
 				})
 			});
-	} else if (ft == 'LineString' || ft == 'MultiLineString') {		
+	} else if (ft == 'LineString' || ft == 'MultiLineString') {
 		style = new ol.style.Style({
 				stroke: new ol.style.Stroke({
 					color: feature.get('stroke_color'),
@@ -450,3 +516,69 @@ var styleFunction = function (feature, resolution) {
 	}
 	return [style];
 };
+
+function startHighlight() {
+	window.trotsevents.addEventListener("message", function (event) {
+		var eventObj = JSON.parse(event.data);
+		if (eventObj['type'] === 'SECTIE') {
+			var sectieId = eventObj["sectie-id"];
+			var strings = sectieId.split("\$");
+			var pplg = strings[0];
+			var sectieNaam = strings[1];
+
+			setGRSSectionState(sectieNaam, pplg, eventObj["bezet"] == 1 ? 'yellow' : eventObj["ligt-in-rijweg"] == 1 ? '#40b245' : '#696969');
+		}
+	}, false);
+}
+
+function setGRSSectionState(name, pplg, color) {
+	var ids = findGRSSectionId(name, pplg);
+	if (ids.length > 0) {
+		var lyr = getLayer('GRSSection');
+		$.each(ids, function (index, id) {
+			setFeatureStyle(lyr, id, color);
+		});
+	} else {
+		//        console.log('no id found for: ' + name);
+	}
+}
+
+function getLayer(layerName) {
+	var result;
+	$.each(map.getLayers().getArray(), function (index, lyr) {
+		if (lyr.get('title') === layerName) {
+			result = lyr;
+		}
+	});
+	return result;
+}
+
+function setFeatureStyle(lyr, id, color) {
+	var source = lyr.getSource();
+	var feature = source.getFeatureById(id);
+	if (feature) {
+		feature.set('stroke_color', color);
+		feature.changed();
+	} else {
+		console.log('feature not found: ' + id);
+	}
+}
+
+function toggleBovenleidinggroepEvent(id, status) {
+	console.log('toggleBovenleidinggroep: ' + id + ' - ' + status);
+	var color = '#696969';
+	if (status === 'genomen') {
+		color = '#40b245';
+	}
+	var lyr = getLayer('BVL-Groep');
+	setFeatureStyle(lyr, id, color);
+}
+function toggleWerkzoneEvent(id, status) {
+	console.log('toggleWerkzone: ' + id + ' - ' + status);
+	var color = '#696969';
+	if (status === 'genomen') {
+		color = '#40b245';
+	}
+	var lyr = getLayer('BVL-Groep');
+	setFeatureStyle(lyr, id, color);
+}
