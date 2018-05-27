@@ -12,8 +12,16 @@ var bvlGroepen = [
 	['7838', 'GD', '226BT|167BT|165AT|189AT|207BT|205BT|227BT']
 ];
 
+function getBVLgroepen() {
+	return bvlGroepen;
+}
+
+function getWerkzones() {
+	return werkzones;
+}
+
 function findGRSSectionId(name, pplg) {
-	for (var i = 0; i < lookup.length - 1; i++) {
+	for (var i = 0; i < lookup.length; i++) {
 		if (lookup[i][1] === name && lookup[i][0] === pplg) {
 			return lookup[i][4].split('|');
 		}
@@ -23,29 +31,29 @@ function findGRSSectionId(name, pplg) {
 
 function findWerkzoneIds(werkzoneId) {
 	var sectieIds = [];
-	for (var i = 0; i < werkzones.length - 1; i++) {
-		if (werkzoneId === werkzones[i][0]) {
+	for (var i = 0; i < werkzones.length; i++) {
+		if (werkzoneId == werkzones[i][0]) {
 			var sectionNames = werkzones[i][2].split('|');
-			var pplg = werkzones[i][1]
-				$each(sectionNames, function (index, sectionName) {
-					var sids = findGRSSectionId(sectionName, pplg);
-					sectieIds.push(sids);
-				});
+			var pplg = werkzones[i][1];
+			$.each(sectionNames, function (index, sectionName) {
+				var sids = findGRSSectionId(sectionName, pplg);
+				sectieIds.push.apply(sectieIds,sids);
+			});
 		}
 	}
 	return sectieIds;
 }
 
-function findBvlIds(werkzoneId) {
+function findBvlIds(bvlGroepId) {
 	var sectieIds = [];
-	for (var i = 0; i < bvlGroepen.length - 1; i++) {
-		if (werkzoneId === bvlGroepen[i][0]) {
+	for (var i = 0; i < bvlGroepen.length; i++) {
+		if (bvlGroepId == bvlGroepen[i][0]) {
 			var sectionNames = bvlGroepen[i][2].split('|');
-			var pplg = bvlGroepen[i][1]
-				$each(sectionNames, function (index, sectionName) {
-					var sids = findGRSSectionId(sectionName, pplg);
-					sectieIds.push(sids);
-				});
+			var pplg = bvlGroepen[i][1];
+			$.each(sectionNames, function (index, sectionName) {
+				var sids = findGRSSectionId(sectionName, pplg);
+				sectieIds.push.apply(sectieIds,sids);
+			});
 		}
 	}
 	return sectieIds;
