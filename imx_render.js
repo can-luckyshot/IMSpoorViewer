@@ -140,66 +140,69 @@ function parseAndRenderIMX(xmlDoc, src) {
 
 function buildWerkzoneLayer(typeMap) {
 	var vectorLayer = new ol.layer.Vector({
-			'title': type,
+			'title': 'Werkzone',
 			style: styleFunction,
-			source: new ol.source.Vector({})
+			source: new ol.source.Vector({}),
+			declutter: true
 		});
 	var items = [];
-	$each(werkzones, function (index, werkzone) {
+	var werkzones = getWerkzones();
+	$.each(werkzones, function (index, werkzone) {
 		var item = new Object({
 				color: '#696969',
-				secties: [],
-				customId: werkzone
+				sections: [],
+				customId: werkzone[0]
 			});
-		var sectionIds = findWerkzoneIds(werkzone);
-		for (var i = 0; i < sectionIds.length; i++) {
-			$each(typeMap['GRSSection'], function (type, entry) {
-				$each(entry.list, function (index, renderableObject) {
-					if (sectionIds[i] === getPuic(renderableObject)) {
-						item.secties.push(renderableObject);
-					}
-				});
-			});
-			items.push(item);
-		}
+		var sectionIds = findWerkzoneIds(werkzone[0], werkzone[1]);
+		var sections = getSectionsWithIds(sectionIds, typeMap['GRSSection'].list);
+		item.sections.push.apply(item.sections, sections);
+		items.push(item);
 	});
 	createCustomLayer('Werkzone', '#696969', items, vectorLayer);
 }
 
 function buildBovenleidinggroepLayer(typeMap) {
 	var vectorLayer = new ol.layer.Vector({
-			'title': type,
+			'title': 'BVL-Groep',
 			style: styleFunction,
-			source: new ol.source.Vector({})
+			source: new ol.source.Vector({}),
+			declutter: true
 		});
 	var items = [];
-	$each(bvlGroepen, function (index, bvlGroep) {
+	$.each(getBVLgroepen(), function (index, bvlGroep) {
 		var item = new Object({
 				color: '#696969',
-				secties: [],
-				customId: bvlGroep
+				sections: [],
+				customId: bvlGroep[0]
 			});
-		var sectionIds = findBvlIds(werkzone);
-		for (var i = 0; i < sectionIds.length; i++) {
-			$each(typeMap['GRSSection'], function (type, entry) {
-				$each(entry.list, function (index, renderableObject) {
-					if (sectionIds[i] === getPuic(renderableObject)) {
-						item.secties.push(renderableObject);
-					}
-				});
-			});
-			items.push(item);
-		}
+		var sectionIds = findBvlIds(bvlGroep[0], bvlGroep[1]);
+		var sections = getSectionsWithIds(sectionIds, typeMap['GRSSection'].list);
+		item.sections.push.apply(item.sections, sections);
+		items.push(item);
 	});
 	createCustomLayer('BVL-Groep', '#696969', items, vectorLayer);
 }
+
+function getSectionsWithIds(sectionIds, sections) {
+	var result = [];
+	$.each(sectionIds, function (index, sectionId) {
+		for (var j = 0; j < sections.length; j++) {
+			var puic = getPuic($(sections[j]));
+			if (sectionId == puic) {
+				result.push(sections[j]);
+				break;
+			}
+		}
+	});
+	return result;
+}
+
 // speciale functie die een layer van objecten bouwd waarvan de geoms gecombineerd moeten worden.
 function createCustomLayer(title, color, customObjects, vectorLayer) {
-	console.log('creating custom layer ' + title);
 	$.each(customObjects, function (index, customObject) {
 		var lineGeoms = [];
 		//per sectie van werkzone de geom
-		$each(customObject.sections, function (index, section) {
+		$.each(customObject.sections, function (index, section) {
 			var $item = $(section);
 			var lines = $item.find('gml\\:LineString');
 			$.each(lines, function (index, line) {
@@ -209,7 +212,6 @@ function createCustomLayer(title, color, customObjects, vectorLayer) {
 				}
 			});
 		});
-		//		console.log($item.attr('name') + ' multiline: ' + lineGeoms.length);
 		var multiline = new ol.geom.MultiLineString(lineGeoms);
 		multiline.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 		var puic = customObject.customId;
@@ -219,11 +221,10 @@ function createCustomLayer(title, color, customObjects, vectorLayer) {
 				name: puic,
 				label: puic,
 				imxType: title,
-				text_color: '#000000',
+				text_color: color,
 				stroke_color: color
 			});
 		feature.setId(puic);
-		addAttributes(feature, item);
 		vectorLayer.getSource().addFeature(feature);
 	});
 	map.getLayers().push(vectorLayer);
@@ -239,7 +240,8 @@ function buildTypeLayers(typeMap) {
 		var vectorLayer = new ol.layer.Vector({
 				'title': type,
 				style: styleFunction,
-				source: new ol.source.Vector({})
+				source: new ol.source.Vector({}),
+				declutter: true
 			});
 		if (geom.nodeName == 'gml:LineString') {
 			createLineStringLayer(type, color, renderableObjects, vectorLayer)
@@ -415,7 +417,6 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 }
 
 function createMultiLineStringLayer(title, color, items, vectorLayer) {
-	console.log('creating multilinestring');
 	$.each(items, function (index, item) {
 		var $item = $(item);
 		var lines = $item.find('gml\\:LineString');
@@ -426,7 +427,6 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 				lineGeoms.push(getCoordinates(poslist));
 			}
 		});
-		//		console.log($item.attr('name') + ' multiline: ' + lineGeoms.length);
 		var multiline = new ol.geom.MultiLineString(lineGeoms);
 		multiline.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 		var puic = getPuic($item);
@@ -451,6 +451,7 @@ var nsResolver = function (element) {
 };
 
 var styleFunction = function (feature, resolution) {
+
 	var ft = feature.getGeometry().getType();
 	var style;
 	if (ft == 'Point') {
@@ -498,23 +499,44 @@ var styleFunction = function (feature, resolution) {
 					color: feature.get('stroke_color'),
 					width: 2
 				}),
-				text: new ol.style.Text({
-					text: feature.get('label'),
-					fill: new ol.style.Fill({
-						color: feature.get('text_color')
-					}),
-					stroke: new ol.style.Stroke({
-						color: feature.get('text_color'),
-						width: 1
-					}),
-					offsetX: 0,
-					offsetY: -5,
-				})
+
 			});
 	} else {
 		console.log('unknown style');
 	}
-	return [style];
+	var labelStyle = new ol.style.Style({
+			geometry: function (feature) {
+				var geometry = feature.getGeometry();
+				if (geometry.getType() == 'MultiLineString') {
+					// Only render label for the widest polygon of a multipolygon
+					var polygons = geometry.getLineStrings();
+					var widest = 0;
+					for (var i = 0, ii = polygons.length; i < ii; ++i) {
+						var polygon = polygons[i];
+						var width = ol.extent.getWidth(polygon.getExtent());
+						if (width > widest) {
+							widest = width;
+							geometry = polygon;
+						}
+					}
+				}
+				return geometry;
+			},
+			text: new ol.style.Text({
+				text: resolution < 0.6 ? feature.get('label') : '',
+
+				fill: new ol.style.Fill({
+					color: feature.get('text_color')
+				}),
+				stroke: new ol.style.Stroke({
+					color: feature.get('text_color'),
+					width: 1
+				}),
+				offsetX: 0,
+				offsetY: -10,
+			})
+		});
+	return [style, labelStyle];
 };
 
 function startHighlight() {
@@ -538,19 +560,18 @@ function setGRSSectionState(name, pplg, color) {
 		$.each(ids, function (index, id) {
 			setFeatureStyle(lyr, id, color);
 		});
-	} else {
-		//        console.log('no id found for: ' + name);
 	}
 }
 
 function getLayer(layerName) {
 	var result;
-	$.each(map.getLayers().getArray(), function (index, lyr) {
+	var lyrs = map.getLayers().getArray();
+	for (var i = 0; i < lyrs.length; i++) {
 		if (lyr.get('title') === layerName) {
 			result = lyr;
 		}
-	});
-	return result;
+	}
+	return undefined;
 }
 
 function setFeatureStyle(lyr, id, color) {
@@ -573,6 +594,7 @@ function toggleBovenleidinggroepEvent(id, status) {
 	var lyr = getLayer('BVL-Groep');
 	setFeatureStyle(lyr, id, color);
 }
+
 function toggleWerkzoneEvent(id, status) {
 	console.log('toggleWerkzone: ' + id + ' - ' + status);
 	var color = '#696969';
