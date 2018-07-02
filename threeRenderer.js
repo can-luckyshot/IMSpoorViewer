@@ -257,10 +257,11 @@ function createTracks(renderableObjects) {
 	}
 	$.each(renderableObjects.list, function (index, item) {
 		var $item = $(item);
-		var puic = $item.attr('puicRef');
+		var puic = getPuic($item);
 		var trackName = $item.attr('name');
+		console.log(trackName);
 		var points = getGmlCoords(item);
-		var path = buildPath(points, index);
+		var path = buildPath(points);
 		trackPaths.push({
 			puic: puic,
 			path: path,

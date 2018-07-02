@@ -121,8 +121,9 @@ function popupSingleClick(evt) {
 	}
 }
 function loadDemoFile() {
-	$.get('file.xml', function (data) {
-		parseAndRenderIMX(data, 'file.xml');
+	var demoFile = 'testdata/PoC Utrecht-20180702120442.xml';
+	$.get(demoFile, function (data) {
+		parseAndRenderIMX(data, demoFile);
 	});
 }
 
