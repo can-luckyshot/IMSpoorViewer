@@ -146,7 +146,8 @@ function parseAndRenderIMX(xmlDoc, src) {
 	});
 	buildTypeLayers(typeMap);
 	setTableTypeMap(typeMap);
-	buildScene(typeMap);
+	var railConnections = $(xmlDoc).find('RailConnection');
+	buildScene(typeMap,railConnections);
 	buildGraph();
 	updateLayerSwitcher();
 }

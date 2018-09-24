@@ -130,11 +130,14 @@ function initPlane() {
 	scene.add(mesh);
 }
 
-function buildScene(typeMap) {
+function buildScene(typeMap, railConnections) {
+	//var fullRailConns = buildFullRailConnections(railConnections, typeMap);
+	buildRailConnectionMap(railConnections);
 	calcExtent(typeMap);
 	console.log('Extent: ' + extent);
 	initPlane();
 	createTracks(typeMap.Track);
+	createTracks(typeMap.Passage);
 	fillTracklist();
 	createSignals(typeMap.Signal);
 	createBufferstops(typeMap.BufferStop);
@@ -144,8 +147,43 @@ function buildScene(typeMap) {
 	createFurniture(typeMap.ElectricityCabinet, 'models/kast_groot.json');
 	//GasCabinet
 	createFurniture(typeMap.GasCabinet, 'models/kast_klein.json');
-	createBuildings(typeMap.Track);
+	//createBuildings(typeMap.Track);
 
+}
+
+function buildRailConnectionMap(railConnections) {
+	railConnection2TrackMap = [];
+	$.each(railConnections, function (index, railConnection) {
+		var puic = $(railConnection).attr('puic');
+		var tr = $(railConnection).attr('trackRef');
+		if (tr) {
+			railConnection2TrackMap.push([tr, puic]);
+		}
+	});
+}
+
+function buildFullRailConnections(railConnections, typeMap) {
+	$.each(railConnections, function (index, railConnection) {
+		var track;
+		var passages = [];
+		var tr = $(railConnection).attr('trackRef');
+		var tr = $(railConnection).attr('passageRefs');
+		if (tr) {
+			track = findTrack(tr);
+		}
+
+	});
+}
+
+function findTrack(typeMap, ref) {
+	var track;
+	var tracks = typeMap.Track;
+	for (var i = 0; i < tracks.length; i++) {
+		if ($(tracks[i]).attr('puic') == ref) {
+			return tracks[i];
+		}
+	}
+	return undefined;
 }
 
 function fillTracklist() {
@@ -277,50 +315,115 @@ function createSignals(renderableObjects) {
 	if (!renderableObjects) {
 		return;
 	}
+	buildSignalsFromModel(renderableObjects);
+}
+var smbHeight = 3.75;
+var smbPoleGeom = new THREE.BoxGeometry(0.15, smbHeight, 0.15);
+
+function buildSMBPole() {
 	var material = new THREE.MeshPhongMaterial({
 			color: 0xc0c0c0
 		});
-	var jsonloader = new THREE.JSONLoader();
-	jsonloader.load('models/signal.json', function (geometry) {
-		geometry.computeBoundingBox();
-		geometry.computeVertexNormals();
-		$.each(renderableObjects.list, function (index, item) {
+	var mesh = new THREE.Mesh(smbPoleGeom, material);
+	mesh.position.set(0, smbHeight / 2.0, 0);
+	return mesh;
+}
+
+var smbSignGeom = new THREE.PlaneGeometry(0.5, 0.5);
+function buildSMBSign() {
+	var signTexture = loader.load('textures/SMB.png');
+	signTexture.needsUpdate = true;
+
+	//geometry.computeBoundingBox();
+	//geometry.computeVertexNormals();
+	var frontMaterial = new THREE.MeshPhongMaterial({
+			color: 0xffffff,
+			specular: 0xffffff,
+			shininess: 20,
+			side: THREE.FrontSide,
+			shading: THREE.FlatShading,
+			map: signTexture
+		});
+	var backMaterial = new THREE.MeshPhongMaterial({
+			color: 0xffffff,
+			specular: 0xffffff,
+			shininess: 10,
+			side: THREE.BackSide,
+			shading: THREE.FlatShading,
+		});
+	var materials = [frontMaterial, backMaterial];
+	var sign = THREE.SceneUtils.createMultiMaterialObject(smbSignGeom, materials);
+	sign.position.x = 0.3;
+	sign.position.y = 3.5;
+	sign.rotateY(Math.PI * 0.5);
+	return sign;
+}
+
+function buildSignalsFromModel(renderableObjects) {
+	$.each(renderableObjects.list, function (index, item) {
+		if (isRelevantSignal(item)) {
 			var point = getGmlCoords(item)[0];
 			var $item = $(item);
 			var parentObject = new THREE.Object3D();
-			var mesh = new THREE.Mesh(geometry, material);
-			var textMesh = addSignalName($item.attr('name'));
-			parentObject.add(mesh);
-			parentObject.add(textMesh);
+			parentObject.add(buildSMBPole());
+			parentObject.add(buildSMBSign());
+			parentObject.add(buildSignalName($item.attr('name')));
 			var point = getGmlCoords(item)[0];
 			var $item = $(item);
-			var tri = $item.find('TrackRelationInfo');
+			var tri = getTrackRelationInfo($item);
 			var direction = tri.attr('direction');
-			var trackRef = tri.attr('trackRef');
+			var trackRef = getTrackRef(tri);
 			var measure = parseFloat(tri.attr('atMeasure'));
 			var path = getPathByPuic(trackRef);
-			//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
-			var tan = path.getTangentAt(measure / path.getLength());
-			var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
-			if (direction === 'Downstream') {
-				angle += Math.PI;
-			}
+			if (path && measure < path.getLength()) {
+				//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
+				var tan = path.getTangentAt(measure / path.getLength());
+				var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
+				if (direction === 'Downstream') {
+					angle += Math.PI;
+				}
 
-			parentObject.rotation.set(0.0, angle, 0.0);
-			var x =  - (point[0] - offset[0]);
-			var y = point[1] - offset[1];
-			parentObject.position.set(x, 0.0, y);
-			scene.add(parentObject);
+				parentObject.rotation.set(0.0, angle, 0.0);
+				var x =  - (point[0] - offset[0]);
+				var y = point[1] - offset[1];
+				parentObject.position.set(x, 0.0, y);
+				scene.add(parentObject);
 
-			if (index == 0) {
-				camera.position.set(x, 10.0, y);
-				console.log('set camera to first track position: ' + x + ',' + y);
+				if (index == 0) {
+					camera.position.set(x, 10.0, y);
+					console.log('set camera to first track position: ' + x + ',' + y);
+					return;
+				}
 			}
-		});
+		}
 	});
 }
 
-function addSignalName(text) {
+function isRelevantSignal(signal) {
+	var st = $(signal).attr('signalType');
+	if (st == 'Controlled') {
+		return true;
+	}
+	return false;
+}
+
+function getTrackRelationInfo($item) {
+	var tri = $item.find('TrackRelationInfo')[0];
+	if (tri == undefined) {
+		tri = $item.find('RailConnectionInfo')[0];
+	}
+	return $(tri);
+}
+
+function getTrackRef($item) {
+	var ref = $item.attr('trackRef');
+	if (ref == undefined) {
+		ref = $item.attr('railConnectionRef');
+	}
+	return ref;
+}
+
+function buildSignalName(text) {
 	var canvas = document.createElement('canvas');
 	var spriteW = 256;
 	var spriteH = 64;
@@ -340,19 +443,27 @@ function addSignalName(text) {
 	textTexture.needsUpdate = true;
 
 	var geometry = new THREE.PlaneGeometry(1, spriteH / spriteW);
-	var material = new THREE.MeshPhongMaterial({
+	var frontMaterial = new THREE.MeshPhongMaterial({
 			color: 0xffffff,
 			specular: 0xffffff,
 			shininess: 20,
-			side: THREE.DoubleSide,
+			side: THREE.FrontSide,
 			shading: THREE.FlatShading,
 			map: textTexture,
 		});
-	var plane = new THREE.Mesh(geometry, material);
-	plane.position.x = 0.3;
-	plane.position.y = 2.5;
-	plane.rotateY(Math.PI * 0.5);
-	return plane;
+			var backMaterial = new THREE.MeshPhongMaterial({
+			color: 0xffffff,
+			specular: 0xffffff,
+			shininess: 10,
+			side: THREE.BackSide,
+			shading: THREE.FlatShading
+		});
+		var materials = [frontMaterial, backMaterial];
+	var textSign = THREE.SceneUtils.createMultiMaterialObject(geometry, materials);
+	textSign.position.x = 0.3;
+	textSign.position.y = 2.5;
+	textSign.rotateY(Math.PI * 0.5);
+	return textSign;
 
 }
 
@@ -403,11 +514,11 @@ function createBuildings(tracks) {
 				var bid = feature.id;
 				//console.log(bid +' index: '+buildingIds.indexOf(bid));
 				reportBuilding(feature);
-				if(buildingIds.indexOf(bid) === -1 ){
+				if (buildingIds.indexOf(bid) === -1) {
 					buildingIds.push(bid);
 					createBuildingMesh(feature, buildingMaterials);
 				}
-				
+
 			});
 		});
 	});
@@ -419,13 +530,13 @@ function createBuildings(tracks) {
 
 }
 
-function reportBuilding(feature){
+function reportBuilding(feature) {
 	var polyArray = feature.geometry.coordinates[0];
 	if ("Polygon" === feature.geometry.type) {
 		polyArray = [];
 		polyArray.push(feature.geometry.coordinates[0]);
 	}
-	if(polyArray.length > 1){
+	if (polyArray.length > 1) {
 		console.log(feature);
 	}
 }
@@ -450,7 +561,7 @@ function createBuildingMesh(feature, buildingMaterials) {
 			var ix =  - (pc[i][0] - offset[0]);
 			var iy = pc[i][1] - offset[1];
 			shape.lineTo(ix, iy);
-		}		
+		}
 		var extrudeSettings = {
 			steps: 1,
 			amount: 3,
@@ -461,7 +572,7 @@ function createBuildingMesh(feature, buildingMaterials) {
 
 		var mesh = new THREE.Mesh(geometry, material);
 		mesh.rotation.x = Math.PI / 2;
-		mesh.position.y = 3*(index+1);
+		mesh.position.y = 3 * (index + 1);
 		scene.add(mesh);
 	});
 }
@@ -481,8 +592,6 @@ function createBufferstops(renderableObjects) {
 		$.each(renderableObjects.list, function (index, item) {
 			var mesh = new THREE.Mesh(geometry, material);
 			var point = getGmlCoords(item)[0];
-			var $item = $(item);
-
 			var x =  - (point[0] - offset[0]);
 			var y = point[1] - offset[1];
 			mesh.position.set(x, 0.0, y);
@@ -501,20 +610,27 @@ function createOverheadLineMasts(renderableObjects) {
 			color: 0xc0c0c0
 		});
 	var mastHeight = 7.0;
-	var geometry = new THREE.BoxGeometry(0.22, 7.0, 0.22);
+	var geometry = new THREE.BoxGeometry(0.22, mastHeight, 0.22);
 	$.each(renderableObjects.list, function (index, item) {
 		var mesh = new THREE.Mesh(geometry, material);
 		var point = getGmlCoords(item)[0];
 		var $item = $(item);
 		var x =  - (point[0] - offset[0]);
 		var y = point[1] - offset[1];
-		mesh.position.set(x, 3.5, y);
+		mesh.position.set(x, mastHeight / 2.0, y);
 		scene.add(mesh);
 	});
-
 }
 
 function getPathByPuic(puic) {
+	if (railConnection2TrackMap.length > 0) {
+		for (var i = 0; i < railConnection2TrackMap.length; i++) {
+			var pair = railConnection2TrackMap[i];
+			if (puic == pair[1]) {
+				puic = pair[0];
+			}
+		}
+	}
 	for (var i = 0; i < trackPaths.length; i++) {
 		if (trackPaths[i].puic === puic) {
 			return trackPaths[i].path;
@@ -539,10 +655,12 @@ function buildPath(points) {
 		newPoints2d.push(new THREE.Vector2(x, y));
 	});
 	var tempPath = new THREE.Path(newPoints2d);
-	var divisions = Math.round(tempPath.getLength() / TTL);
-	newPoints2d = tempPath.getSpacedPoints(divisions);
+	var divisions = Math.ceil(tempPath.getLength() / TTL);
+	console.log('divisions ' + divisions);
+	var spacedPoints = tempPath.getSpacedPoints(divisions);
+	console.log('spacedPoints ' + spacedPoints.length);
 	var newPoints3d = [];
-	$.each(newPoints2d, function (index, p) {
+	$.each(spacedPoints, function (index, p) {
 		newPoints3d.push(new THREE.Vector3(p.x, 0.0, p.y));
 	});
 	return new THREE.CatmullRomCurve3(newPoints3d);
