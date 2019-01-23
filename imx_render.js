@@ -1,3 +1,4 @@
+
 function handleFileSelect(evt) {
 	evt.stopPropagation();
 	evt.preventDefault();
@@ -106,7 +107,7 @@ function popupSingleClick(evt) {
 		ii;
 		for (i = 0, ii = features.length; i < ii; ++i) {
 			var f = features[i];
-			info.push(f.get('imxType') + ': ' + f.get('name') + '<br/>');
+			info.push(f.get('imxType') + ': ' + getIdent(f) + '<br/>');
 		}
 		element.popover('destroy');
 		element.popover({
@@ -119,6 +120,14 @@ function popupSingleClick(evt) {
 	} else {
 		element.popover('destroy');
 	}
+}
+
+function getIdent(feature){
+	var name = feature.get('name');
+	if(name === undefined){
+		name = feature.get('id');
+	}
+	return name;
 }
 function loadDemoFile() {
 	$.get('file.xml', function (data) {
@@ -145,7 +154,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 	});
 	buildTypeLayers(typeMap);
 	setTableTypeMap(typeMap);
-	buildScene(typeMap);
+	//buildScene(typeMap);
 	buildGraph();
 	updateLayerSwitcher();
 }
@@ -159,10 +168,12 @@ function buildTypeLayers(typeMap) {
 		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
 		var geom = $(location).children()[0];
+
 		var vectorLayer = new ol.layer.Vector({
 				'title': type,
 				style: styleFunction,
-				source: new ol.source.Vector({})
+				source: new ol.source.Vector({}),
+				declutter: true
 			});
 		if (geom.nodeName == 'gml:LineString') {
 			createLineStringLayer(type, color, renderableObjects, vectorLayer)
@@ -222,10 +233,12 @@ function createPointLayer(title, color, items, vectorLayer) {
 		var $item = $(item);
 		var poslist = getPoslist($item);
 		if (poslist != undefined) {
-			var coordValues = poslist.replace(/,/g, ' ').split(' ');
-			var point = new ol.geom.Point([coordValues[0], coordValues[1]]);
+			var point = new ol.geom.Point(getCoordinates(poslist)[0]);
 			point.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 			var puic = getPuic($item);
+			if(puic == '0679c2ec-24a6-4c0b-8b29-340cf44c4740'){
+				console.log('stopbord: '+poslist+' '+getCoordinates(poslist));
+			}
 			var feature = new ol.Feature({
 					geometry: point,
 					id: puic,
