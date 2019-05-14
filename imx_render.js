@@ -52,7 +52,7 @@ var vectorLayers = new ol.layer.Group({
 		layers: [
 			polygonLayers,
 			lineLayers,
-			pointLayers,
+			pointLayers			
 		]
 	});
 
@@ -68,15 +68,16 @@ function makeGroup(title) {
 function initMap() {
 	console.log('initMap');
 	proj4.defs("EPSG:28992", "+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.040,49.910,465.840,-0.40939,0.35971,-1.86849,4.0772");
+	ol.proj.proj4.register(proj4);
 	var tile = new ol.layer.Tile({
 			'title': 'Open Street Map',
 			source: new ol.source.OSM()
 		});
 	baseLayers.getLayers().push(tile);
-	map = new ol.Map({
+	map = new ol.WebGLMap({
 			target: 'map',
 			'title': 'Base map',
-			layers: [baseLayers, vectorLayers],
+			layers: [baseLayers,vectorLayers],
 			view: new ol.View({
 				center: ol.proj.fromLonLat([5.3, 52.23]),
 				zoom: 8
@@ -193,11 +194,17 @@ function buildTypeLayers(typeMap) {
 }
 
 function getColor(index) {
-	var h = index * 50; // color hue between 1 and 360
-	var s = 70; // saturation 30-100%
-	var l = 40; // lightness 30-70%
-	var color = 'hsl(' + h + ',' + s + '%,' + l + '%)';
+	//var h = index * 50; // color hue between 1 and 360
+	//var s = 70; // saturation 30-100%
+	//var l = 40; // lightness 30-70%
+	//var color = 'hsl(' + h + ',' + s + '%,' + l + '%)';
 	//console.log('index: ' + index + ' - ' + color);
+	var num = Math.round(0xaaaaaa * Math.random());
+  var r = num >> 16;
+  var g = num >> 8 & 255;
+  var b = num & 255;
+  return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+	
 	return color;
 }
 
