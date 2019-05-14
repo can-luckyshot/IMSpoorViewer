@@ -418,12 +418,13 @@ var styleFunction = function (feature, resolution) {
 					width: 1
 				}),
 				fill: new ol.style.Fill({
-					color: feature.get('stroke_color').replace('hsl', 'hsla').replace(')', ',0.1)')
+					//color: feature.get('stroke_color').replace('hsl', 'hsla').replace(')', ',0.1)')
+					color: feature.get('stroke_color')
 				}),
 				text: new ol.style.Text({
 					text: feature.get('label'),
 					fill: new ol.style.Fill({
-						color: feature.get('stroke_color')
+						color: 'black'
 					}),
 					stroke: new ol.style.Stroke({
 						color: feature.get('stroke_color'),
