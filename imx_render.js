@@ -368,11 +368,11 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 				lineGeoms.push(getCoordinates(poslist));
 			}
 		});
-		var polygon = new ol.geom.MultiLineString(lineGeoms);
-		polygon.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+		var multiLineString = new ol.geom.MultiLineString(lineGeoms);
+		multiLineString.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 		var puic = getPuic($item);
 		var feature = new ol.Feature({
-				geometry: polygon,
+				geometry: multiLineString,
 				id: puic,
 				name: $item.attr('name'),
 				label: $item.attr('name'),
