@@ -330,7 +330,7 @@ function createPolygonLayer(title, color, items, vectorLayer) {
 function createMultiPolygonLayer(title, color, items, vectorLayer) {
 	$.each(items, function (index, item) {
 		var $item = $(item);
-		var polys = $item.find('Polygon');
+		var polys = $item.find('gml\\:Polygon');
 		var polyGeoms = [];
 		$.each(polys, function (index, poly) {
 			var poslist = $(poly).text().trim();
@@ -360,7 +360,7 @@ function createMultiPolygonLayer(title, color, items, vectorLayer) {
 function createMultiLineStringLayer(title, color, items, vectorLayer) {
 	$.each(items, function (index, item) {
 		var $item = $(item);
-		var lines = $item.find('LineString');
+		var lines = $item.find('gml\\:LineString');
 		var lineGeoms = [];
 		$.each(lines, function (index, line) {
 			var poslist = $(line).text().trim();
