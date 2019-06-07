@@ -532,6 +532,48 @@ function buildSignalsFromModel(renderableObjects) {
 	});
 }
 
+function buildSMBsFromModel(renderableObjects) {
+	$.each(renderableObjects.list, function (index, item) {
+		if (isRelevantSignal(item)) {
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			var parentObject = new THREE.Object3D();
+			parentObject.add(buildSMBPole());
+			parentObject.add(buildSMBSign());
+			parentObject.add(buildSignalName($item.attr('name')));
+			var point = getGmlCoords(item)[0];
+			var tri = getTrackRelationInfo($item);
+			var direction = tri.attr('direction');
+			var trackRef = getTrackRef(tri);
+			var measure = parseFloat(tri.attr('atMeasure'));
+			var path = getPathByPuic(trackRef);
+			if (path && measure < path.getLength()) {
+				//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
+				var tan = path.getTangentAt(measure / path.getLength());
+				var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
+				if (direction === 'Downstream') {
+					angle += Math.PI;
+				}
+				console.log('adding Signal: '+$item.attr('name'));
+				parentObject.rotation.set(0.0, angle, 0.0);
+				var x =  - (point[0] - offset[0]);
+				var y = point[1] - offset[1];
+				parentObject.position.set(x, 0.0, y);
+				scene.add(parentObject);
+
+				if (index == 0) {
+					camera.position.set(x, 10.0, y);
+					console.log('set camera to first track position: ' + x + ',' + y);
+					return;
+				}
+			}
+			else{
+				console.log('path or measure not found for: '+$item.attr('puic'));
+			}
+		}
+	});
+}
+
 function isRelevantSignal(signal) {
 	var st = $(signal).attr('signalType');
 	if (st == 'Controlled') {
