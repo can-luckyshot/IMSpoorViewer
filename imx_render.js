@@ -109,6 +109,7 @@ function popupSingleClick(evt) {
 		for (i = 0, ii = features.length; i < ii; ++i) {
 			var f = features[i];
 			info.push(f.get('imxType') + ': ' + getIdent(f) + '<br/>');
+			info.push('length: '+f.getGeometry().getLength() + '<br/>');	
 		}
 		element.popover('destroy');
 		element.popover({
@@ -155,7 +156,8 @@ function parseAndRenderIMX(xmlDoc, src) {
 	});
 	buildTypeLayers(typeMap);
 	setTableTypeMap(typeMap);
-	//buildScene(typeMap);
+	var railConnections = $(xmlDoc).find('RailConnection');
+	buildScene(typeMap,railConnections);
 	buildGraph();
 	updateLayerSwitcher();
 }
