@@ -43,6 +43,7 @@ function initDragAndDrop() {
 }
 // global for popup
 var popup;
+var meldingen;
 var pointLayers = makeGroup('Punt-Objecten');
 var lineLayers = makeGroup('Lijn-Objecten');
 var polygonLayers = makeGroup('Gebieden');
@@ -137,7 +138,9 @@ function loadDemoFile() {
 }
 
 function parseAndRenderIMX(xmlDoc, src) {
+	
 	var objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
+	var meldingen = $(xmlDoc).find('messages');
 	var typeMap = new Object();
 	var i = 0;
 	objectsWithGeom.each(function (index, objectWithGeom) {
@@ -153,6 +156,10 @@ function parseAndRenderIMX(xmlDoc, src) {
 		}
 		entry.list.push(objectWithGeom);
 	});
+		var	entry = new Object({
+					list: meldingen
+				});
+			typeMap['Message'] = entry;
 	buildTypeLayers(typeMap);
 	setTableTypeMap(typeMap);
 	//buildScene(typeMap);
@@ -168,6 +175,7 @@ function buildTypeLayers(typeMap) {
 		var renderableObjects = entry.list;
 		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
+		if(location){
 		var geom = $(location).children()[0];
 
 		var vectorLayer = new ol.layer.Vector({
@@ -188,6 +196,7 @@ function buildTypeLayers(typeMap) {
 			createMultiLineStringLayer(type, color, renderableObjects, vectorLayer);
 		} else {
 			//console.log('onbekend: ' + geom.tagName);
+		}
 		}
 
 	});
