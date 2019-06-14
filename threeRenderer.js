@@ -182,7 +182,7 @@ function buildRailConnections(railConnections) {
 		dedubPoints(points);
 		var name = rc.attr('name');
 		if (points.length > 1) {
-			console.log('adding Track: '+name);
+			console.log('adding Track: ' + name);
 			var path = buildPath(points);
 			railPaths.push({
 				puic: puic,
@@ -230,7 +230,7 @@ function joinLines(lines) {
 			}
 		}
 	}
-	if(lines.length !== 0){
+	if (lines.length !== 0) {
 		console.error('not all segments connected');
 	}
 	return points;
@@ -491,43 +491,47 @@ function buildSMBSign() {
 }
 
 function buildSignalsFromModel(renderableObjects) {
+	if (!renderableObjects) {
+		return;
+	}
+	var material = new THREE.MeshPhongMaterial({
+			color: 0xc0c0c0
+		});
+	var jsonloader = new THREE.JSONLoader();
 	$.each(renderableObjects.list, function (index, item) {
-		if (isRelevantSignal(item)) {
-			var point = getGmlCoords(item)[0];
-			var $item = $(item);
-			var parentObject = new THREE.Object3D();
-			parentObject.add(buildSMBPole());
-			parentObject.add(buildSMBSign());
-			parentObject.add(buildSignalName($item.attr('name')));
-			var point = getGmlCoords(item)[0];
-			var tri = getTrackRelationInfo($item);
-			var direction = tri.attr('direction');
-			var trackRef = getTrackRef(tri);
-			var measure = parseFloat(tri.attr('atMeasure'));
-			var path = getPathByPuic(trackRef);
-			if (path && measure < path.getLength()) {
-				//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
-				var tan = path.getTangentAt(measure / path.getLength());
-				var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
-				if (direction === 'Downstream') {
-					angle += Math.PI;
-				}
-				console.log('adding Signal: '+$item.attr('name'));
-				parentObject.rotation.set(0.0, angle, 0.0);
-				var x =  - (point[0] - offset[0]);
-				var y = point[1] - offset[1];
-				parentObject.position.set(x, 0.0, y);
-				scene.add(parentObject);
+		var geometry = jsonloader.load('models/signal.json');
+		geometry.computeBoundingBox();
+		geometry.computeVertexNormals();
+		var point = getGmlCoords(item)[0];
+		var $item = $(item);
+		var parentObject = new THREE.Object3D();
+		var mesh = new THREE.Mesh(geometry, material);
+		var textMesh = addSignalName($item.attr('name'));
+		parentObject.add(mesh);
+		parentObject.add(textMesh);
+		var point = getGmlCoords(item)[0];
+		var $item = $(item);
+		var tri = $item.find('TrackRelationInfo');
+		var direction = tri.attr('direction');
+		var trackRef = tri.attr('trackRef');
+		var measure = parseFloat(tri.attr('atMeasure'));
+		var path = getPathByPuic(trackRef);
+		//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
+		var tan = path.getTangentAt(measure / path.getLength());
+		var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
+		if (direction === 'Downstream') {
+			angle += Math.PI;
+		}
 
-				if (index == 0) {
-					camera.position.set(x, 10.0, y);
-					console.log('set camera to first track position: ' + x + ',' + y);
-					return;
-				}
-			}
-			else{
-				console.log('path or measure not found for: '+$item.attr('puic'));
-			}
+		parentObject.rotation.set(0.0, angle, 0.0);
+		var x =  - (point[0] - offset[0]);
+		var y = point[1] - offset[1];
+		parentObject.position.set(x, 0.0, y);
+		scene.add(parentObject);
+
+		if (index == 0) {
+			camera.position.set(x, 10.0, y);
+			console.log('set camera to first track position: ' + x + ',' + y);
 		}
 	});
 }
@@ -554,7 +558,7 @@ function buildSMBsFromModel(renderableObjects) {
 				if (direction === 'Downstream') {
 					angle += Math.PI;
 				}
-				console.log('adding Signal: '+$item.attr('name'));
+				console.log('adding Signal: ' + $item.attr('name'));
 				parentObject.rotation.set(0.0, angle, 0.0);
 				var x =  - (point[0] - offset[0]);
 				var y = point[1] - offset[1];
@@ -566,9 +570,8 @@ function buildSMBsFromModel(renderableObjects) {
 					console.log('set camera to first track position: ' + x + ',' + y);
 					return;
 				}
-			}
-			else{
-				console.log('path or measure not found for: '+$item.attr('puic'));
+			} else {
+				console.log('path or measure not found for: ' + $item.attr('puic'));
 			}
 		}
 	});
@@ -858,7 +861,7 @@ function buildTrackMesh(path, segmentCount, depthIndex) {
 			shading: THREE.FlatShading,
 			map: rails_texture,
 			polygonOffset: true,
-			polygonOffsetFactor: - depthIndex
+			polygonOffsetFactor:  - depthIndex
 		});
 
 	var mesh = new THREE.Mesh(geom, material);
