@@ -23,10 +23,10 @@ function createMessageTable(entry) {
 	var tbody = $('<tbody></tbody>');
 	thead.append(tr);
 	table.append(thead);
-	var renderableObjects = entry.list;
-	for (var i = 0; i < renderableObjects.length; i++) {
+	var messages = entry.list;
+	for (var i = 0; i < messages.length; i++) {
 		var row = $('<tr></tr>');
-		var puics = $(renderableObjects[i]).find('puics');
+		var puics = $(messages[i]).find('puics');
 		if(puics.length){
 			var cell = $('<td></td>');
 			var list = $('<ul></ul>');
@@ -46,18 +46,18 @@ function createMessageTable(entry) {
 		}
 		tbody.append(row);
 
-		var value = $(renderableObjects[i]).find('code').text();
+		var value = $(messages[i]).find('code').text();
 		var rowData = $('<td></td>').text(value);
 		row.append(rowData);
 		tbody.append(row);
 
-		value = $(renderableObjects[i]).find('message').text();
+		value = $(messages[i]).find('message').text();
 		rowData = $('<td></td>').text(value);
 		row.append(rowData);
 		tbody.append(row);
 	}
 	table.append(tbody);
-	var title = $('<h1>' + type + ' (' + renderableObjects.length + ')</h1>');
+	var title = $('<h1>' + type + ' (' + messages.length + ')</h1>');
 	var legendItem = $('<li></li>').append('<a href="#' + type + '">' + type + '</a>');
 	$('#tableLegend').append(legendItem);
 	tableDiv.append(title);

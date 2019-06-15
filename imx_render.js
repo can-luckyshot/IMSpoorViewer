@@ -95,11 +95,12 @@ function initMap() {
 
 function popupSingleClick(evt) {
 	var element = $(popup.getElement());
-	console.log(evt);
 	var pixel = map.getPixelFromCoordinate(evt.coordinate);
 	var features = [];
 	map.forEachFeatureAtPixel(pixel, function (feature) {
-		if (feature.get('imxType') && feature.get('geometry').getType() !== 'Polygon') {
+		var imxType = feature.get('imxType');
+		var geomType = feature.get('geometry').getType();
+		if (imxType && geomType !== 'Polygon') {
 			features.push(feature);
 		}
 	});
@@ -140,7 +141,6 @@ function loadDemoFile() {
 }
 
 function parseAndRenderIMX(xmlDoc, src) {
-
 	var objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
 	var meldingen = $(xmlDoc).find('messages');
 	var typeMap = new Object();
@@ -163,10 +163,67 @@ function parseAndRenderIMX(xmlDoc, src) {
 		});
 	typeMap['Message'] = entry;
 	buildTypeLayers(typeMap);
+	buildMessageLayer(entry, xmlDoc);
 	setTableTypeMap(typeMap);
 	//buildScene(typeMap);
 	buildGraph();
 	updateLayerSwitcher();
+}
+
+function buildMessageLayer(entry, xmlDoc) {
+	var style = new ol.style.Style({
+			image: new ol.style.Icon({
+				anchor: [0.5, 1],
+				src: 'textures/error-24.png'
+			})
+		});
+	var vectorLayer = new ol.layer.Vector({
+			'title': 'Message',
+			style: function () {
+				return style;
+			},
+			source: new ol.source.Vector({}),
+			declutter: true
+		});
+	var messages = entry.list;
+	$.each(messages, function (index, message) {
+		var puic = getFirstPuicFromMessage(message);
+		var code = $(message).find('code').text();
+		var messageText = $(message).find('message').text();
+		var item = getRefObject(puic, xmlDoc);
+		var $item = $(item);
+		var poslist = getPoslist($item);
+		var point = new ol.geom.Point(getCoordinates(poslist)[0]);
+		point.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+		var feature = new ol.Feature({
+				geometry: point,
+				id: 'm' + index,
+				imxType: 'Message',
+				name: messageText
+			});
+		feature.setId('m' + index);
+		addAttributes(feature, item);
+		vectorLayer.getSource().addFeature(feature);
+	});
+	pointLayers.getLayers().push(vectorLayer);
+}
+
+function getRefObject(puic, xmlDoc) {
+	var objectWithGeom = $(xmlDoc).find('[puic=' + puic + ']')[0];
+	var location = $(objectWithGeom).find('GeographicLocation')[0];
+	var geom = $(location).children()[0];
+	if (geom.nodeName == 'gml:Point') {
+		return objectWithGeom;
+	}
+}
+
+function getFirstPuicFromMessage(message) {
+	var puics = $(message).find('puics');
+	if (puics.length) {
+		return $(puics[0]).text();
+	} else {
+		return puics.text();
+	}
 }
 
 function buildGraph() {}
