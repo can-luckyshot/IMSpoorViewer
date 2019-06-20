@@ -5,7 +5,7 @@ var extent;
 var offset;
 var world_size = [];
 var camMinY = 0.005;
-var trackPaths = [];
+var railPaths = [];
 // animation vars
 var animateCamera = false;
 var animationStart;
@@ -114,41 +114,160 @@ function initPlane() {
 			shininess: 20,
 			shading: THREE.FlatShading,
 			map: texture,
-			depthWrite: false
+			polygonOffset: true,
+			polygonOffsetFactor: 10,
 		});
 	var step = 80.0;
 	var w = (world_size[0] - (world_size[0] % step)) + step;
 	var h = (world_size[1] - (world_size[1] % step)) + step;
 	var repeatS = (w / step);
 	var repeatT = (h / step);
-	console.log('repeat: ' + repeatS + ',' + repeatT);
+	//console.log('repeat: ' + repeatS + ',' + repeatT);
 	texture.repeat = new THREE.Vector2(repeatS, repeatT);
 	var geometry = new THREE.PlaneBufferGeometry(w, h, repeatS, repeatT);
 
 	var mesh = new THREE.Mesh(geometry, material);
+	//mesh.renderOrder = 0;
 	mesh.rotation.x = -Math.PI / 2;
 	scene.add(mesh);
 }
 
 function buildScene(typeMap, railConnections) {
-	//var fullRailConns = buildFullRailConnections(railConnections, typeMap);
-	buildRailConnectionMap(railConnections);
 	calcExtent(typeMap);
+	createTrackMap(typeMap.Track);
+	createPassageMap(typeMap.Passage);
+	buildRailConnections(railConnections);
+
 	console.log('Extent: ' + extent);
 	initPlane();
-	createTracks(typeMap.Track);
-	createTracks(typeMap.Passage);
 	fillTracklist();
-	createSignals(typeMap.Signal);
-	createBufferstops(typeMap.BufferStop);
-	createOverheadLineMasts(typeMap.OverheadLineMast);
-	createOverheadLineMasts(typeMap.OverheadLineSupport);
-	//ElectricityCabinet
-	createFurniture(typeMap.ElectricityCabinet, 'models/kast_groot.json');
-	//GasCabinet
-	createFurniture(typeMap.GasCabinet, 'models/kast_klein.json');
-	//createBuildings(typeMap.Track);
+	//createTracks(typeMap.Track);
+	//createTracks(typeMap.Passage);
 
+	createSignals(typeMap.Signal);
+	//createBufferstops(typeMap.BufferStop);
+	//createOverheadLineMasts(typeMap.OverheadLineMast);
+	//createOverheadLineMasts(typeMap.OverheadLineSupport);
+	//createFurniture(typeMap.ElectricityCabinet, 'models/kast_groot.json');
+	//createFurniture(typeMap.GasCabinet, 'models/kast_klein.json');
+	//createBuildings(typeMap.Track);
+}
+
+function buildRailConnections(railConnections) {
+	var depthIndex = 4;
+	$.each(railConnections, function (index, railConnection) {
+		var rc = $(railConnection);
+		var puic = rc.attr('puic');
+		//console.log('building: '+puic);
+		var tr = rc.attr('trackRef');
+		var passageRefs = rc.attr('passageRefs').split(' ');
+
+		var lines = [];
+		if (tr) {
+			var track = trackMap.get(tr);
+			lines.push(getGmlCoords(track));
+		}
+		var firstJunction;
+		if (passageRefs) {
+			var junctions = [];
+			$.each(passageRefs, function (index, passageRef) {
+				var passage = passageMap.get(passageRef);
+				if (passage) {
+					junctions.push(passage.parentNode);
+					lines.push(getGmlCoords(passage));
+				}
+			});
+			$.each(junctions, function (index, junction) {
+				if (firstJunction) {
+					if ($(junction).attr('name') > $(firstJunction).attr('name')) {
+						firstJunction = junction;
+					}
+				} else {
+					firstJunction = junction;
+				}
+			});
+		}
+		//console.log('lines: ' + lines.length);
+		var points = joinLines(lines, firstJunction);
+		//console.log('joined: ' + points);
+		//console.log('joined: ' + points.length);
+		dedubPoints(points);
+		var name = rc.attr('name');
+		if (points.length > 1) {
+			console.log('adding Track: ' + name);
+			var path = buildPath(points);
+			railPaths.push({
+				puic: puic,
+				path: path,
+				name: name
+			});
+			var mesh = buildTrackMesh(path, points.length, depthIndex++);
+			scene.add(mesh);
+		} else {
+			console.error("not enough points for puic " + puic);
+		}
+	});
+}
+
+function joinLines(lines, firstJunction) {
+	var count = lines.length;
+	var points = lines[0];
+	lines.splice(0, 1);
+	while (lines.length < count) {
+		count = lines.length;
+		for (var i = 0; lines.length; i++) {
+			var baseP1 = points[0];
+			var baseP2 = points[points.length - 1];
+			var line = lines[i];
+			var p1 = line[0];
+			var p2 = line[line.length - 1];
+			if (pointEqual(baseP1, p2)) {
+				points = line.concat(points);
+				lines.splice(i, 1);
+				break;
+			} else if (pointEqual(baseP2, p1)) {
+				points = points.concat(line);
+				lines.splice(i, 1);
+				break;
+			} else if (pointEqual(baseP1, p1)) {
+				line = line.reverse();
+				points = line.concat(points);
+				lines.splice(i, 1);
+				break;
+			} else if (pointEqual(baseP2, p2)) {
+				line = line.reverse();
+				points = points.concat(line);
+				lines.splice(i, 1);
+				break;
+			}
+		}
+	}
+	if (firstJunction) {
+		var firstPoint = getGmlCoords(firstJunction)[0];
+		if (!pointEqual(firstPoint, points[0])) {
+			points.reverse();
+		}
+	}
+	if (lines.length !== 0) {
+		console.error('not all segments connected');
+	}
+	return points;
+}
+
+function pointEqual(p1, p2) {
+	return p1[0] === p2[0] && p1[1] === p2[1];
+}
+
+function dedubPoints(points) {
+	for (var i = 0; i < points.length - 1; i++) {
+		var p1 = points[i];
+		var p2 = points[i + 1];
+		if (p1[0] === p2[0] && p1[1] === p2[1]) {
+			points.splice(i, 1);
+		}
+	}
+	//console.log('dedub: ' + points);
+	//console.log('dedub: ' + points.length);
 }
 
 function buildRailConnectionMap(railConnections) {
@@ -188,7 +307,7 @@ function findTrack(typeMap, ref) {
 
 function fillTracklist() {
 	var list = $('#tracklist');
-	$.each(trackPaths, function (index, track) {
+	$.each(railPaths, function (index, track) {
 		//console.log('add track: ' + track.name);
 		var item = $('<li></li>');
 		var content = $('<a></a>').text(track.name);
@@ -289,6 +408,32 @@ function getGmlCoords(item) {
 	return points;
 }
 
+function createTrackMap(renderableObjects) {
+	trackMap = new Map();
+	if (!renderableObjects) {
+		return;
+	}
+	$.each(renderableObjects.list, function (index, item) {
+		var $item = $(item);
+		var puic = getPuic($item);
+		//var points = getGmlCoords(item);
+		trackMap.set(puic, item);
+	});
+}
+
+function createPassageMap(renderableObjects) {
+	passageMap = new Map();
+	if (!renderableObjects) {
+		return;
+	}
+	$.each(renderableObjects.list, function (index, item) {
+		var $item = $(item);
+		var puic = getPuic($item);
+		//var points = getGmlCoords(item);
+		passageMap.set(puic, item);
+	});
+}
+
 function createTracks(renderableObjects) {
 	if (!renderableObjects) {
 		return;
@@ -299,15 +444,19 @@ function createTracks(renderableObjects) {
 		var trackName = $item.attr('name');
 		console.log(trackName);
 		var points = getGmlCoords(item);
-		var path = buildPath(points);
-		trackPaths.push({
-			puic: puic,
-			path: path,
-			name: trackName
-		});
-		var mesh = buildTrackMesh(path, points.length, index);
-		mesh.renderDepth = index;
-		scene.add(mesh);
+		if (points !== undefined && points.length > 1) {
+			var path = buildPath(points);
+			railPaths.push({
+				puic: puic,
+				path: path,
+				name: trackName
+			});
+			var mesh = buildTrackMesh(path, points.length, index);
+			mesh.renderDepth = index;
+			scene.add(mesh);
+		} else {
+			console('no points for puic ' + puic);
+		}
 	});
 }
 
@@ -360,6 +509,59 @@ function buildSMBSign() {
 }
 
 function buildSignalsFromModel(renderableObjects) {
+	if (!renderableObjects) {
+		return;
+	}
+	var material = new THREE.MeshPhongMaterial({
+			color: 0xc0c0c0
+		});
+	var jsonloader = new THREE.JSONLoader();
+	$.each(renderableObjects.list, function (index, item) {
+		jsonloader.load('models/signal.json', function (geometry) {
+			geometry.computeBoundingBox();
+			geometry.computeVertexNormals();
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			var parentObject = new THREE.Object3D();
+			var mesh = new THREE.Mesh(geometry, material);
+			var textMesh = buildSignalName($item.attr('name'));
+			parentObject.add(mesh);
+			parentObject.add(textMesh);
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			var tri = $item.find('RailConnectionInfo');
+			var direction = tri.attr('direction');
+			var rcRef = tri.attr('railConnectionRef');
+			var measure = parseFloat(tri.attr('atMeasure'));
+			var path = getPathByPuic(rcRef);
+			if (path && measure < path.getLength()) {
+				//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
+				var tan = path.getTangentAt(measure / path.getLength());
+				var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
+				if (direction === 'Downstream') {
+					angle += Math.PI;
+				}
+				console.log('adding Signal: ' + $item.attr('name'));
+				parentObject.rotation.set(0.0, angle, 0.0);
+				var x =  - (point[0] - offset[0]);
+				var y = point[1] - offset[1];
+				parentObject.position.set(x, 0.0, y);
+				scene.add(parentObject);
+
+				if (index == 0) {
+					camera.position.set(x, 10.0, y);
+					console.log('set camera to first track position: ' + x + ',' + y);
+					return;
+				}
+			} else {
+				console.log('path or measure not found for: ' + $item.attr('puic'));
+			}
+		});
+
+	});
+}
+
+function buildSMBsFromModel(renderableObjects) {
 	$.each(renderableObjects.list, function (index, item) {
 		if (isRelevantSignal(item)) {
 			var point = getGmlCoords(item)[0];
@@ -369,7 +571,6 @@ function buildSignalsFromModel(renderableObjects) {
 			parentObject.add(buildSMBSign());
 			parentObject.add(buildSignalName($item.attr('name')));
 			var point = getGmlCoords(item)[0];
-			var $item = $(item);
 			var tri = getTrackRelationInfo($item);
 			var direction = tri.attr('direction');
 			var trackRef = getTrackRef(tri);
@@ -382,7 +583,7 @@ function buildSignalsFromModel(renderableObjects) {
 				if (direction === 'Downstream') {
 					angle += Math.PI;
 				}
-
+				console.log('adding Signal: ' + $item.attr('name'));
 				parentObject.rotation.set(0.0, angle, 0.0);
 				var x =  - (point[0] - offset[0]);
 				var y = point[1] - offset[1];
@@ -394,6 +595,8 @@ function buildSignalsFromModel(renderableObjects) {
 					console.log('set camera to first track position: ' + x + ',' + y);
 					return;
 				}
+			} else {
+				console.log('path or measure not found for: ' + $item.attr('puic'));
 			}
 		}
 	});
@@ -451,14 +654,14 @@ function buildSignalName(text) {
 			shading: THREE.FlatShading,
 			map: textTexture,
 		});
-			var backMaterial = new THREE.MeshPhongMaterial({
+	var backMaterial = new THREE.MeshPhongMaterial({
 			color: 0xffffff,
 			specular: 0xffffff,
 			shininess: 10,
 			side: THREE.BackSide,
 			shading: THREE.FlatShading
 		});
-		var materials = [frontMaterial, backMaterial];
+	var materials = [frontMaterial, backMaterial];
 	var textSign = THREE.SceneUtils.createMultiMaterialObject(geometry, materials);
 	textSign.position.x = 0.3;
 	textSign.position.y = 2.5;
@@ -623,17 +826,9 @@ function createOverheadLineMasts(renderableObjects) {
 }
 
 function getPathByPuic(puic) {
-	if (railConnection2TrackMap.length > 0) {
-		for (var i = 0; i < railConnection2TrackMap.length; i++) {
-			var pair = railConnection2TrackMap[i];
-			if (puic == pair[1]) {
-				puic = pair[0];
-			}
-		}
-	}
-	for (var i = 0; i < trackPaths.length; i++) {
-		if (trackPaths[i].puic === puic) {
-			return trackPaths[i].path;
+	for (var i = 0; i < railPaths.length; i++) {
+		if (railPaths[i].puic === puic) {
+			return railPaths[i].path;
 		}
 	}
 	return undefined;
@@ -656,9 +851,9 @@ function buildPath(points) {
 	});
 	var tempPath = new THREE.Path(newPoints2d);
 	var divisions = Math.ceil(tempPath.getLength() / TTL);
-	console.log('divisions ' + divisions);
+	//console.log('divisions ' + divisions);
 	var spacedPoints = tempPath.getSpacedPoints(divisions);
-	console.log('spacedPoints ' + spacedPoints.length);
+	//console.log('spacedPoints ' + spacedPoints.length);
 	var newPoints3d = [];
 	$.each(spacedPoints, function (index, p) {
 		newPoints3d.push(new THREE.Vector3(p.x, 0.0, p.y));
@@ -666,7 +861,7 @@ function buildPath(points) {
 	return new THREE.CatmullRomCurve3(newPoints3d);
 }
 
-function buildTrackMesh(path, segmentCount, count) {
+function buildTrackMesh(path, segmentCount, depthIndex) {
 	var radius = TTW / 2.0;
 	var radiusSegments = 2;
 	var closed = false;
@@ -691,9 +886,7 @@ function buildTrackMesh(path, segmentCount, count) {
 			shading: THREE.FlatShading,
 			map: rails_texture,
 			polygonOffset: true,
-			polygonOffsetFactor: count, // positive value pushes polygon further away
-			polygonOffsetUnits: 1
-			//wireframe: true
+			polygonOffsetFactor:  - depthIndex
 		});
 
 	var mesh = new THREE.Mesh(geom, material);
