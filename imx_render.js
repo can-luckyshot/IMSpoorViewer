@@ -188,7 +188,7 @@ function buildTypeLayers(typeMap, isLargeDataset) {
 			createLineStringLayer(type, color, renderableObjects, vectorLayer)
 		} else if (geom.nodeName == 'gml:Point') {
 			vectorLayer.setVisible(!isLargeDataset);
-			createPointLayer(type, color, renderableObjects, vectorLayer, isLargeDataset);
+			createPointLayer(type, color, renderableObjects, vectorLayer);
 		} else if (geom.nodeName == 'gml:Polygon') {
 			createPolygonLayer(type, color, renderableObjects, vectorLayer);
 		} else if (geom.nodeName == 'gml:MultiPolygon') {
