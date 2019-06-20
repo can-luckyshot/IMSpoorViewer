@@ -52,7 +52,7 @@ var vectorLayers = new ol.layer.Group({
 		layers: [
 			polygonLayers,
 			lineLayers,
-			pointLayers			
+			pointLayers
 		]
 	});
 
@@ -77,7 +77,7 @@ function initMap() {
 	map = new ol.WebGLMap({
 			target: 'map',
 			'title': 'Base map',
-			layers: [baseLayers,vectorLayers],
+			layers: [baseLayers, vectorLayers],
 			view: new ol.View({
 				center: ol.proj.fromLonLat([5.3, 52.23]),
 				zoom: 8
@@ -109,7 +109,10 @@ function popupSingleClick(evt) {
 		for (i = 0, ii = features.length; i < ii; ++i) {
 			var f = features[i];
 			info.push(f.get('imxType') + ': ' + getIdent(f) + '<br/>');
-			info.push('length: '+f.getGeometry().getLength() + '<br/>');	
+			if (f.getGeometry().getLength) {
+				info.push('length: ' + f.getGeometry().getLength() + '<br/>');
+			}
+
 		}
 		element.popover('destroy');
 		element.popover({
@@ -124,9 +127,9 @@ function popupSingleClick(evt) {
 	}
 }
 
-function getIdent(feature){
+function getIdent(feature) {
 	var name = feature.get('name');
-	if(name === undefined){
+	if (name === undefined) {
 		name = feature.get('id');
 	}
 	return name;
@@ -138,10 +141,15 @@ function loadDemoFile() {
 }
 
 function parseAndRenderIMX(xmlDoc, src) {
-	var objectsWithGeom = $(xmlDoc).find('GeographicLocation').parent().parent();
+	var geoms = xmlDoc.getElementsByTagName("GeographicLocation");
+	var objectsWithGeom = [];
+	$.each(geoms, function (index, geom) {
+		objectsWithGeom.push(geom.parentNode.parentNode);
+	});
+	var isLargeDataset = objectsWithGeom.length > 10000;
 	var typeMap = new Object();
 	var i = 0;
-	objectsWithGeom.each(function (index, objectWithGeom) {
+	$(objectsWithGeom).each(function (index, objectWithGeom) {
 		var nodeName = objectWithGeom.nodeName;
 		var entry = typeMap[nodeName];
 		if (entry == undefined) {
@@ -154,21 +162,19 @@ function parseAndRenderIMX(xmlDoc, src) {
 		}
 		entry.list.push(objectWithGeom);
 	});
-	buildTypeLayers(typeMap);
+	buildTypeLayers(typeMap, isLargeDataset);
 	setTableTypeMap(typeMap);
 	var railConnections = $(xmlDoc).find('RailConnection');
-	buildScene(typeMap,railConnections);
-	buildGraph();
+	if (!isLargeDataset) {
+		buildScene(typeMap, railConnections);
+	}
 	updateLayerSwitcher();
 }
 
-function buildGraph() {}
-
-function buildTypeLayers(typeMap) {
+function buildTypeLayers(typeMap, isLargeDataset) {
 	$.each(typeMap, function (type, entry) {
 		var color = entry.color;
 		var renderableObjects = entry.list;
-		//console.log(type + ' ' + renderableObjects.length + ' items');
 		var location = $(renderableObjects[0]).find('GeographicLocation')[0];
 		var geom = $(location).children()[0];
 
@@ -181,7 +187,8 @@ function buildTypeLayers(typeMap) {
 		if (geom.nodeName == 'gml:LineString') {
 			createLineStringLayer(type, color, renderableObjects, vectorLayer)
 		} else if (geom.nodeName == 'gml:Point') {
-			createPointLayer(type, color, renderableObjects, vectorLayer);
+			vectorLayer.setVisible(!isLargeDataset);
+			createPointLayer(type, color, renderableObjects, vectorLayer, isLargeDataset);
 		} else if (geom.nodeName == 'gml:Polygon') {
 			createPolygonLayer(type, color, renderableObjects, vectorLayer);
 		} else if (geom.nodeName == 'gml:MultiPolygon') {
@@ -202,11 +209,11 @@ function getColor(index) {
 	//var color = 'hsl(' + h + ',' + s + '%,' + l + '%)';
 	//console.log('index: ' + index + ' - ' + color);
 	var num = Math.round(0xaaaaaa * Math.random());
-  var r = num >> 16;
-  var g = num >> 8 & 255;
-  var b = num & 255;
-  return 'rgb(' + r + ', ' + g + ', ' + b + ')';
-	
+	var r = num >> 16;
+	var g = num >> 8 & 255;
+	var b = num & 255;
+	return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+
 	return color;
 }
 
@@ -245,9 +252,6 @@ function createPointLayer(title, color, items, vectorLayer) {
 			var point = new ol.geom.Point(getCoordinates(poslist)[0]);
 			point.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
 			var puic = getPuic($item);
-			if(puic == '0679c2ec-24a6-4c0b-8b29-340cf44c4740'){
-				console.log('stopbord: '+poslist+' '+getCoordinates(poslist));
-			}
 			var feature = new ol.Feature({
 					geometry: point,
 					id: puic,
