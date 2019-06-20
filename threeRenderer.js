@@ -167,16 +167,28 @@ function buildRailConnections(railConnections) {
 			var track = trackMap.get(tr);
 			lines.push(getGmlCoords(track));
 		}
+		var firstJunction;
 		if (passageRefs) {
+			var junctions = [];
 			$.each(passageRefs, function (index, passageRef) {
 				var passage = passageMap.get(passageRef);
 				if (passage) {
+					junctions.push(passage.parentNode);
 					lines.push(getGmlCoords(passage));
+				}
+			});
+			$.each(junctions, function (index, junction) {
+				if (firstJunction) {
+					if ($(junction).attr('name') > $(firstJunction).attr('name')) {
+						firstJunction = junction;
+					}
+				} else {
+					firstJunction = junction;
 				}
 			});
 		}
 		//console.log('lines: ' + lines.length);
-		var points = joinLines(lines);
+		var points = joinLines(lines, firstJunction);
 		//console.log('joined: ' + points);
 		//console.log('joined: ' + points.length);
 		dedubPoints(points);
@@ -197,7 +209,7 @@ function buildRailConnections(railConnections) {
 	});
 }
 
-function joinLines(lines) {
+function joinLines(lines, firstJunction) {
 	var count = lines.length;
 	var points = lines[0];
 	lines.splice(0, 1);
@@ -228,6 +240,12 @@ function joinLines(lines) {
 				lines.splice(i, 1);
 				break;
 			}
+		}
+	}
+	if (firstJunction) {
+		var firstPoint = getGmlCoords(firstJunction)[0];
+		if (!pointEqual(firstPoint, points[0])) {
+			points.reverse();
 		}
 	}
 	if (lines.length !== 0) {
@@ -499,40 +517,47 @@ function buildSignalsFromModel(renderableObjects) {
 		});
 	var jsonloader = new THREE.JSONLoader();
 	$.each(renderableObjects.list, function (index, item) {
-		var geometry = jsonloader.load('models/signal.json');
-		geometry.computeBoundingBox();
-		geometry.computeVertexNormals();
-		var point = getGmlCoords(item)[0];
-		var $item = $(item);
-		var parentObject = new THREE.Object3D();
-		var mesh = new THREE.Mesh(geometry, material);
-		var textMesh = addSignalName($item.attr('name'));
-		parentObject.add(mesh);
-		parentObject.add(textMesh);
-		var point = getGmlCoords(item)[0];
-		var $item = $(item);
-		var tri = $item.find('TrackRelationInfo');
-		var direction = tri.attr('direction');
-		var trackRef = tri.attr('trackRef');
-		var measure = parseFloat(tri.attr('atMeasure'));
-		var path = getPathByPuic(trackRef);
-		//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
-		var tan = path.getTangentAt(measure / path.getLength());
-		var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
-		if (direction === 'Downstream') {
-			angle += Math.PI;
-		}
+		jsonloader.load('models/signal.json', function (geometry) {
+			geometry.computeBoundingBox();
+			geometry.computeVertexNormals();
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			var parentObject = new THREE.Object3D();
+			var mesh = new THREE.Mesh(geometry, material);
+			var textMesh = buildSignalName($item.attr('name'));
+			parentObject.add(mesh);
+			parentObject.add(textMesh);
+			var point = getGmlCoords(item)[0];
+			var $item = $(item);
+			var tri = $item.find('RailConnectionInfo');
+			var direction = tri.attr('direction');
+			var rcRef = tri.attr('railConnectionRef');
+			var measure = parseFloat(tri.attr('atMeasure'));
+			var path = getPathByPuic(rcRef);
+			if (path && measure < path.getLength()) {
+				//console.log('path length: '+path.getLength()+' measure: '+measure + ' t='+measure/path.getLength());
+				var tan = path.getTangentAt(measure / path.getLength());
+				var angle = Math.PI * 1.5 + Math.atan2(tan.x, tan.z);
+				if (direction === 'Downstream') {
+					angle += Math.PI;
+				}
+				console.log('adding Signal: ' + $item.attr('name'));
+				parentObject.rotation.set(0.0, angle, 0.0);
+				var x =  - (point[0] - offset[0]);
+				var y = point[1] - offset[1];
+				parentObject.position.set(x, 0.0, y);
+				scene.add(parentObject);
 
-		parentObject.rotation.set(0.0, angle, 0.0);
-		var x =  - (point[0] - offset[0]);
-		var y = point[1] - offset[1];
-		parentObject.position.set(x, 0.0, y);
-		scene.add(parentObject);
+				if (index == 0) {
+					camera.position.set(x, 10.0, y);
+					console.log('set camera to first track position: ' + x + ',' + y);
+					return;
+				}
+			} else {
+				console.log('path or measure not found for: ' + $item.attr('puic'));
+			}
+		});
 
-		if (index == 0) {
-			camera.position.set(x, 10.0, y);
-			console.log('set camera to first track position: ' + x + ',' + y);
-		}
 	});
 }
 
