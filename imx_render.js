@@ -45,6 +45,7 @@ function initDragAndDrop() {
 var popup;
 var puicMap = new Object();
 var meldingen;
+var messageLayers = makeGroup('Meldingen');
 var pointLayers = makeGroup('Punt-Objecten');
 var lineLayers = makeGroup('Lijn-Objecten');
 var polygonLayers = makeGroup('Gebieden');
@@ -54,7 +55,8 @@ var vectorLayers = new ol.layer.Group({
 		layers: [
 			polygonLayers,
 			lineLayers,
-			pointLayers
+			pointLayers,
+			messageLayers
 		]
 	});
 
@@ -183,7 +185,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 			list: meldingen
 		});
 	typeMap['Message'] = entry;
-	buildMessageLayer(entry);
+	buildMessageLayers(entry);
 	setTableTypeMap(typeMap);
 	var railConnections = $(xmlDoc).find('RailConnection');
 	if (!isLargeDataset) {
@@ -192,7 +194,23 @@ function parseAndRenderIMX(xmlDoc, src) {
 	updateLayerSwitcher();
 }
 
-function buildMessageLayer(entry) {
+function buildMessageLayers(entry){
+	var codeMap = new Object();
+	$.each(entry.list,function(index,message){
+		var code = $(message).find('code').text();
+		var entry = codeMap[code];
+		if(entry == undefined){
+			entry = new Object({list: []});
+			codeMap[code] = entry;
+		}
+		entry.list.push(message);
+	});
+	$.each(codeMap, function (code, entry) {
+		buildMessageLayer(code,entry.list);
+	});
+}
+
+function buildMessageLayer(code,messages) {
 	var style = new ol.style.Style({
 			image: new ol.style.Icon({
 				anchor: [0.5, 1],
@@ -200,14 +218,13 @@ function buildMessageLayer(entry) {
 			})
 		});
 	var vectorLayer = new ol.layer.Vector({
-			'title': 'Message',
+			'title': code,
 			style: function () {
 				return style;
 			},
 			source: new ol.source.Vector({}),
 			declutter: true
 		});
-	var messages = entry.list;
 	$.each(messages, function (index, message) {
 		var puic = getFirstPuicFromMessage(message);
 		var code = $(message).find('code').text();
@@ -227,7 +244,7 @@ function buildMessageLayer(entry) {
 		addAttributes(feature, item);
 		vectorLayer.getSource().addFeature(feature);
 	});
-	pointLayers.getLayers().push(vectorLayer);
+	messageLayers.getLayers().push(vectorLayer);
 }
 
 function getRefObject(puic) {
