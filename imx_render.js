@@ -146,6 +146,7 @@ function loadDemoFile() {
 
 function parseAndRenderIMX(xmlDoc, src) {
 	var geoms = xmlDoc.getElementsByTagName("GeographicLocation");
+	var meldingen = xmlDoc.getElementsByTagName('messages');
 	var objectsWithGeom = [];
 	$.each(geoms, function (index, geom) {
 		objectsWithGeom.push(geom.parentNode.parentNode);
