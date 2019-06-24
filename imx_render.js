@@ -43,6 +43,7 @@ function initDragAndDrop() {
 }
 // global for popup
 var popup;
+var puicMap = new Object();
 var meldingen;
 var pointLayers = makeGroup('Punt-Objecten');
 var lineLayers = makeGroup('Lijn-Objecten');
@@ -116,7 +117,7 @@ function popupSingleClick(evt) {
 			//info.push(f.get('imxType') + ': ' + getIdent(f) + '<br/>');
 			if (f.getGeometry().getLength) {
 				//info.push('<br/>length: ' + f.getGeometry().getLength());
-				itemText+= '<br/>length: ' + f.getGeometry().getLength();
+				itemText += '<br/>length: ' + f.getGeometry().getLength();
 			}
 			item.text(itemText);
 			infoList.append(item);
@@ -154,7 +155,12 @@ function parseAndRenderIMX(xmlDoc, src) {
 	var meldingen = xmlDoc.getElementsByTagName('messages');
 	var objectsWithGeom = [];
 	$.each(geoms, function (index, geom) {
-		objectsWithGeom.push(geom.parentNode.parentNode);
+		var parentElem = geom.parentNode.parentNode;
+		objectsWithGeom.push(parentElem);
+		var puic = $(parentElem).attr('puic');
+		if (puic) {
+			puicMap[puic] = parentElem;
+		}
 	});
 	var isLargeDataset = objectsWithGeom.length > 10000;
 	var typeMap = new Object();
@@ -177,7 +183,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 			list: meldingen
 		});
 	typeMap['Message'] = entry;
-	buildMessageLayer(entry, xmlDoc);
+	buildMessageLayer(entry);
 	setTableTypeMap(typeMap);
 	var railConnections = $(xmlDoc).find('RailConnection');
 	if (!isLargeDataset) {
@@ -186,7 +192,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 	updateLayerSwitcher();
 }
 
-function buildMessageLayer(entry, xmlDoc) {
+function buildMessageLayer(entry) {
 	var style = new ol.style.Style({
 			image: new ol.style.Icon({
 				anchor: [0.5, 1],
@@ -203,10 +209,11 @@ function buildMessageLayer(entry, xmlDoc) {
 		});
 	var messages = entry.list;
 	$.each(messages, function (index, message) {
+		console.log('build message ' + index);
 		var puic = getFirstPuicFromMessage(message);
 		var code = $(message).find('code').text();
 		var messageText = $(message).find('message').text();
-		var item = getRefObject(puic, xmlDoc);
+		var item = getRefObject(puic);
 		var $item = $(item);
 		var poslist = getPoslist($item);
 		var point = new ol.geom.Point(getCoordinates(poslist)[0]);
@@ -224,12 +231,14 @@ function buildMessageLayer(entry, xmlDoc) {
 	pointLayers.getLayers().push(vectorLayer);
 }
 
-function getRefObject(puic, xmlDoc) {
-	var objectWithGeom = $(xmlDoc).find('[puic=' + puic + ']')[0];
-	var location = $(objectWithGeom).find('GeographicLocation')[0];
-	var geom = $(location).children()[0];
-	if (geom.nodeName == 'gml:Point') {
-		return objectWithGeom;
+function getRefObject(puic) {
+	var objectWithGeom = puicMap[puic];
+	if (objectWithGeom) {
+		var location = $(objectWithGeom).find('GeographicLocation')[0];
+		var geom = $(location).children()[0];
+		if (geom.nodeName == 'gml:Point') {
+			return objectWithGeom;
+		}
 	}
 }
 
@@ -241,7 +250,7 @@ function getFirstPuicFromMessage(message) {
 		return puics.text();
 	}
 }
-function buildTypeLayers(typeMap, isLargeDataset){
+function buildTypeLayers(typeMap, isLargeDataset) {
 	$.each(typeMap, function (type, entry) {
 		var color = entry.color;
 		var renderableObjects = entry.list;
@@ -258,8 +267,8 @@ function buildTypeLayers(typeMap, isLargeDataset){
 			if (geom.nodeName == 'gml:LineString') {
 				createLineStringLayer(type, color, renderableObjects, vectorLayer)
 			} else if (geom.nodeName == 'gml:Point') {
-			vectorLayer.setVisible(!isLargeDataset);
-			createPointLayer(type, color, renderableObjects, vectorLayer);
+				vectorLayer.setVisible(!isLargeDataset);
+				createPointLayer(type, color, renderableObjects, vectorLayer);
 			} else if (geom.nodeName == 'gml:Polygon') {
 				createPolygonLayer(type, color, renderableObjects, vectorLayer);
 			} else if (geom.nodeName == 'gml:MultiPolygon') {
