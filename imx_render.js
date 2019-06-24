@@ -108,19 +108,24 @@ function popupSingleClick(evt) {
 		var info = [];
 		var i,
 		ii;
+		var infoList = $('<ul></ul>');
 		for (i = 0, ii = features.length; i < ii; ++i) {
 			var f = features[i];
-			info.push(f.get('imxType') + ': ' + getIdent(f) + '<br/>');
+			var item = $('<li></li>');
+			var itemText = f.get('imxType') + ': ' + getIdent(f);
+			//info.push(f.get('imxType') + ': ' + getIdent(f) + '<br/>');
 			if (f.getGeometry().getLength) {
-				info.push('length: ' + f.getGeometry().getLength() + '<br/>');
+				//info.push('<br/>length: ' + f.getGeometry().getLength());
+				itemText+= '<br/>length: ' + f.getGeometry().getLength();
 			}
-
+			item.text(itemText);
+			infoList.append(item);
 		}
 		element.popover('destroy');
 		element.popover({
 			'placement': 'top',
 			'html': true,
-			'content': info
+			'content': infoList
 		});
 		popup.setPosition(evt.coordinate);
 		element.popover('show');
