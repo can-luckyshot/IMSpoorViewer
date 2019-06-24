@@ -209,7 +209,6 @@ function buildMessageLayer(entry) {
 		});
 	var messages = entry.list;
 	$.each(messages, function (index, message) {
-		console.log('build message ' + index);
 		var puic = getFirstPuicFromMessage(message);
 		var code = $(message).find('code').text();
 		var messageText = $(message).find('message').text();
