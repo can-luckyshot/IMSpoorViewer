@@ -194,7 +194,7 @@ function buildRailConnections(railConnections) {
 		dedubPoints(points);
 		var name = rc.attr('name');
 		if (points.length > 1) {
-			console.log('adding Track: ' + name);
+			//console.log('adding Track: ' + name);
 			var path = buildPath(points);
 			railPaths.push({
 				puic: puic,
@@ -541,7 +541,7 @@ function buildSignalsFromModel(renderableObjects) {
 				if (direction === 'Downstream') {
 					angle += Math.PI;
 				}
-				console.log('adding Signal: ' + $item.attr('name'));
+				//console.log('adding Signal: ' + $item.attr('name'));
 				parentObject.rotation.set(0.0, angle, 0.0);
 				var x =  - (point[0] - offset[0]);
 				var y = point[1] - offset[1];
