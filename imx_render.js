@@ -119,7 +119,7 @@ function popupSingleClick(evt) {
 			//info.push(f.get('imxType') + ': ' + getIdent(f) + '<br/>');
 			if (f.getGeometry().getLength) {
 				//info.push('<br/>length: ' + f.getGeometry().getLength());
-				itemText += '<br/>length: ' + f.getGeometry().getLength();
+				itemText += '<br/>length: ' + f.getGeometry().getLength().toFixed(2);
 			}
 			item.text(itemText);
 			infoList.append(item);
