@@ -140,7 +140,18 @@ function loadDemoFile() {
 	});
 }
 
+var viewTypes = new Object();
+function setViewTypes(){
+	viewTypes = new Object();
+	var types = ['RailConnection','Track','Passage','SingleSwitch','DoubleDiamondSwitch','SingleDiamondSwitch','BufferStop'];
+	$.each(types,function(index,type){
+		viewTypes[type] = type;
+	});
+}
+
+
 function parseAndRenderIMX(xmlDoc, src) {
+	setViewTypes();
 	var geoms = xmlDoc.getElementsByTagName("GeographicLocation");
 	var objectsWithGeom = [];
 	$.each(geoms, function (index, geom) {
@@ -151,6 +162,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 	var i = 0;
 	$(objectsWithGeom).each(function (index, objectWithGeom) {
 		var nodeName = objectWithGeom.nodeName;
+		if(viewTypes[nodeName] !== undefined){
 		var entry = typeMap[nodeName];
 		if (entry == undefined) {
 			var color = getColor(i++);
@@ -161,14 +173,47 @@ function parseAndRenderIMX(xmlDoc, src) {
 			typeMap[nodeName] = entry;
 		}
 		entry.list.push(objectWithGeom);
+		}
 	});
 	buildTypeLayers(typeMap, isLargeDataset);
-	setTableTypeMap(typeMap);
+	//setTableTypeMap(typeMap);
 	var railConnections = $(xmlDoc).find('RailConnection');
 	if (!isLargeDataset) {
-		buildScene(typeMap, railConnections);
+		//buildScene(typeMap, railConnections);
 	}
+	createTrackMap(typeMap.Track);
+	createPassageMap(typeMap.Passage);
+	buildRailConnectionLayer(railConnections);
 	updateLayerSwitcher();
+}
+
+function buildRailConnectionLayer(railConnections){
+	var vectorLayer = new ol.layer.Vector({
+				'title': 'RailConnection',
+				style: styleFunction,
+				source: new ol.source.Vector({}),
+				declutter: true
+			});
+	$.each(railConnections,function(index,railConnection){
+		var $rc = $(railConnection);
+		var points = buildRailConnectionVertices(railConnection);
+		var line = new ol.geom.LineString(points);
+			line.transform(ol.proj.get("EPSG:28992"), map.getView().getProjection());
+			var puic = getPuic($rc);
+			var feature = new ol.Feature({
+					geometry: line,
+					id: puic,
+					name: $rc.attr('name'),
+					label: $rc.attr('name'),
+					imxType: 'RailConnection',
+					text_color: 'rgb(255,0,0)',
+					stroke_color: 'rgb(255,0,0)'
+				});
+			feature.setId(puic);
+			addAttributes(feature, railConnection);
+			vectorLayer.getSource().addFeature(feature);
+	});
+	lineLayers.getLayers().push(vectorLayer);
 }
 
 function buildTypeLayers(typeMap, isLargeDataset) {
@@ -185,7 +230,7 @@ function buildTypeLayers(typeMap, isLargeDataset) {
 				declutter: true
 			});
 		if (geom.nodeName == 'gml:LineString') {
-			createLineStringLayer(type, color, renderableObjects, vectorLayer)
+			createLineStringLayer(type, color, renderableObjects, vectorLayer);
 		} else if (geom.nodeName == 'gml:Point') {
 			vectorLayer.setVisible(!isLargeDataset);
 			createPointLayer(type, color, renderableObjects, vectorLayer);

@@ -156,57 +156,67 @@ function buildScene(typeMap, railConnections) {
 function buildRailConnections(railConnections) {
 	var depthIndex = 4;
 	$.each(railConnections, function (index, railConnection) {
+		var points = buildRailConnectionVertices(railConnection);
 		var rc = $(railConnection);
-		var puic = rc.attr('puic');
-		//console.log('building: '+puic);
-		var tr = rc.attr('trackRef');
-		var passageRefs = rc.attr('passageRefs').split(' ');
+		var name = rc.attr('name');
+		buildRailConnectionMesh(points, name);
+	});
+}
 
-		var lines = [];
-		if (tr) {
-			var track = trackMap.get(tr);
-			lines.push(getGmlCoords(track));
-		}
-		var firstJunction;
-		if (passageRefs) {
-			var junctions = [];
-			$.each(passageRefs, function (index, passageRef) {
-				var passage = passageMap.get(passageRef);
-				if (passage) {
-					junctions.push(passage.parentNode);
-					lines.push(getGmlCoords(passage));
-				}
-			});
-			$.each(junctions, function (index, junction) {
-				if (firstJunction) {
-					if ($(junction).attr('name') > $(firstJunction).attr('name')) {
-						firstJunction = junction;
-					}
-				} else {
+function buildRailConnectionMesh(points, name) {
+	if (points.length > 1) {
+		console.log('adding Track: ' + name);
+		var path = buildPath(points);
+		railPaths.push({
+			puic: puic,
+			path: path,
+			name: name
+		});
+		var mesh = buildTrackMesh(path, points.length, depthIndex++);
+		scene.add(mesh);
+	} else {
+		console.error("not enough points for puic " + puic);
+	}
+}
+
+function buildRailConnectionVertices(railConnection) {
+	var rc = $(railConnection);
+	var puic = rc.attr('puic');
+	//console.log('building: '+puic);
+	var tr = rc.attr('trackRef');
+	var passageRefs = rc.attr('passageRefs').split(' ');
+
+	var lines = [];
+	if (tr) {
+		var track = trackMap.get(tr);
+		lines.push(getGmlCoords(track));
+	}
+	var firstJunction;
+	if (passageRefs) {
+		var junctions = [];
+		$.each(passageRefs, function (index, passageRef) {
+			var passage = passageMap.get(passageRef);
+			if (passage) {
+				junctions.push(passage.parentNode);
+				lines.push(getGmlCoords(passage));
+			}
+		});
+		$.each(junctions, function (index, junction) {
+			if (firstJunction) {
+				if ($(junction).attr('name') > $(firstJunction).attr('name')) {
 					firstJunction = junction;
 				}
-			});
-		}
-		//console.log('lines: ' + lines.length);
-		var points = joinLines(lines, firstJunction);
-		//console.log('joined: ' + points);
-		//console.log('joined: ' + points.length);
-		dedubPoints(points);
-		var name = rc.attr('name');
-		if (points.length > 1) {
-			console.log('adding Track: ' + name);
-			var path = buildPath(points);
-			railPaths.push({
-				puic: puic,
-				path: path,
-				name: name
-			});
-			var mesh = buildTrackMesh(path, points.length, depthIndex++);
-			scene.add(mesh);
-		} else {
-			console.error("not enough points for puic " + puic);
-		}
-	});
+			} else {
+				firstJunction = junction;
+			}
+		});
+	}
+	//console.log('lines: ' + lines.length);
+	var points = joinLines(lines, firstJunction);
+	//console.log('joined: ' + points);
+	//console.log('joined: ' + points.length);
+	dedubPoints(points);
+	return points;
 }
 
 function joinLines(lines, firstJunction) {
