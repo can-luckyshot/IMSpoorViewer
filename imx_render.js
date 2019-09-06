@@ -108,9 +108,10 @@ function popupSingleClick(evt) {
 		ii;
 		for (i = 0, ii = features.length; i < ii; ++i) {
 			var f = features[i];
+			info.push('puic: ' + f.get('id') + '<br/>');
 			info.push(f.get('imxType') + ': ' + getIdent(f) + '<br/>');
 			if (f.getGeometry().getLength) {
-				info.push('length: ' + f.getGeometry().getLength() + '<br/>');
+				info.push('length: ' + f.getGeometry().getLength().toFixed(2) + '<br/>');
 			}
 
 		}
@@ -441,12 +442,11 @@ function createMultiLineStringLayer(title, color, items, vectorLayer) {
 var nsResolver = function (element) {
 	return 'http://www.prorail.nl/IMSpoor';
 };
-
 var styleFunction = function (feature, resolution) {
 	var ft = feature.getGeometry().getType();
-	var style;
+	var styles = [];
 	if (ft == 'Point') {
-		style = new ol.style.Style({
+		var style = new ol.style.Style({
 				image: new ol.style.Circle({
 					radius: 4,
 					fill: new ol.style.Fill({
@@ -462,8 +462,9 @@ var styleFunction = function (feature, resolution) {
 					offsetY: -10,
 				})
 			});
+		styles.push(style);
 	} else if (ft == 'Polygon' || ft == 'MultiPolygon') {
-		style = new ol.style.Style({
+		var style = new ol.style.Style({
 				stroke: new ol.style.Stroke({
 					color: feature.get('stroke_color'),
 					width: 1
@@ -485,8 +486,9 @@ var styleFunction = function (feature, resolution) {
 					offsetY: 0,
 				})
 			});
+		styles.push(style);
 	} else if (ft == 'LineString' || ft == 'MultiLineString') {
-		style = new ol.style.Style({
+		var style = new ol.style.Style({
 				stroke: new ol.style.Stroke({
 					color: feature.get('stroke_color'),
 					width: 2
@@ -504,8 +506,40 @@ var styleFunction = function (feature, resolution) {
 					offsetY: -5,
 				})
 			});
+		styles.push(style);
+		var measure = 0.0;
+		var rot_offset = Math.Pi * 0.5;
+		feature.getGeometry().forEachSegment(function(start, end) {
+          var dx = end[0] - start[0];
+          var dy = end[1] - start[1];
+		  measure = measure + Math.abs(dx) + Math.abs(dy);
+          var rotation = Math.atan2(dy, dx);
+          // arrows
+          styles.push(new ol.style.Style({
+            geometry: new ol.geom.Point(end),
+            image: new ol.style.Icon({
+              src: 'textures/arrow.png',
+              anchor: [0.75, 0.5],
+              rotateWithView: true,
+              rotation: -rotation
+            }),
+			text: new ol.style.Text({
+					text: 'm='+measure.toFixed(1),
+					fill: new ol.style.Fill({
+						color: 'black'
+					}),
+					stroke: new ol.style.Stroke({
+						color: feature.get('stroke_color'),
+						width: 1
+					}),
+					offsetX: 0,
+					offsetY: 0,
+					rotation: -rotation
+				})
+          }));
+        });
 	} else {
 		console.log('unknown style');
 	}
-	return [style];
+	return styles;
 };
