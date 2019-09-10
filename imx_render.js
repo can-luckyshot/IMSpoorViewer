@@ -88,8 +88,17 @@ function initMap() {
     popup = new ol.Overlay({
             element: document.getElementById('popup')
         });
-    map.addOverlay(popup);
-    map.on('singleclick', popupSingleClick);
+    //map.addOverlay(popup);
+    //map.on('singleclick', popupSingleClick);
+	var select = new ol.interaction.Select(); 
+	map.addInteraction(select);
+          select.on('select', function(e) {
+            var message = '&nbsp;' +
+                e.target.getFeatures().getLength() +
+                ' selected features (last operation selected ' + e.selected.length +
+                ' and deselected ' + e.deselected.length + ' features)';
+			console.log(message);
+          });
 }
 
 function popupSingleClick(evt) {
@@ -136,8 +145,8 @@ function getIdent(feature) {
     return name;
 }
 function loadDemoFile() {
-    $.get('file.xml', function (data) {
-        parseAndRenderIMX(data, 'file.xml');
+    $.get('UitgifteEnschede_imx121_ref.xml', function (data) {
+        parseAndRenderIMX(data, 'UitgifteEnschede_imx121_ref.xml');
     });
 }
 
@@ -214,6 +223,10 @@ function buildRailConnectionLayer(railConnections) {
         vectorLayer.getSource().addFeature(feature);
     });
     lineLayers.getLayers().push(vectorLayer);
+	var snap = new ol.interaction.Snap({
+        source: vectorLayer.getSource()
+      });
+      map.addInteraction(snap);
 }
 
 function buildTypeLayers(typeMap, isLargeDataset) {
