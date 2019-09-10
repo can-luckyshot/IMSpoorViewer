@@ -184,8 +184,10 @@ function buildRailConnectionVertices(railConnection) {
 	var puic = rc.attr('puic');
 	//console.log('building: '+puic);
 	var tr = rc.attr('trackRef');
-	var passageRefs = rc.attr('passageRefs').split(' ');
-
+	var passageRefs = [];
+	if(rc.attr('passageRefs')){
+		passageRefs= rc.attr('passageRefs').split(' ');
+	}
 	var lines = [];
 	if (tr) {
 		var track = trackMap.get(tr);
