@@ -28,6 +28,39 @@ function handleFileSelect(evt) {
     });
 }
 
+function calcMeasure(line,point){
+	var measure = 0.0;
+	var minDist = 10000000.0;
+	var segments = [];
+        line.forEachSegment(function (start, end) {
+            segments.push(new ol.geom.Line(start, end));           
+		});
+		var closestSegment = segments.sort(sortByDistance(point))[0];
+		line.forEachSegment(function (start, end) {
+			if(start[0]==closestSegment[0][0] && start[1]==closestSegment[0][1]&&end[0]==closestSegment[1][0] && end[1]==closestSegment[1][1]){
+				var dx = point[0] - start[0];
+				var dy = point[1]  - start[1];
+				measure = measure + Math.abs(dx) + Math.abs(dy);
+			}
+			else{
+				var dx = end[0] - start[0];
+				var dy = end[1] - start[1];
+				measure = measure + Math.abs(dx) + Math.abs(dy);
+			}			
+		});
+		
+		return measure;
+}
+
+function sortByDistance(point) {
+	return function(a,b){
+		const deltaA = ol.Coordinate.squaredDistanceToSegment(point, a);
+		const deltaB = ol.Coordinate.squaredDistanceToSegment(point, b);
+		return deltaA - deltaB;
+	}
+  
+}
+
 function handleDragOver(evt) {
     evt.stopPropagation();
     evt.preventDefault();
@@ -88,7 +121,7 @@ function initMap() {
     popup = new ol.Overlay({
             element: document.getElementById('popup')
         });
-    //map.addOverlay(popup);
+    map.addOverlay(popup);
     //map.on('singleclick', popupSingleClick);
 	var select = new ol.interaction.Select(); 
 	map.addInteraction(select);
@@ -98,7 +131,29 @@ function initMap() {
                 ' selected features (last operation selected ' + e.selected.length +
                 ' and deselected ' + e.deselected.length + ' features)';
 			console.log(message);
+			handleMeasure(e);
           });
+}
+
+function handleMeasure(e){
+	if(e.selected.length == 1){
+		var feature = e.selected = 1;
+		var point = new ol.geom.Point(e.mapBrowserEvent.coordinate);
+		point.transform(map.getView().getProjection(),ol.proj.get("EPSG:28992"));
+		var measure = calcMeasure(feature.getGeometry(),point.getCoordinates());
+		var element = $(popup.getElement());
+		element.popover('destroy');
+        element.popover({
+            'placement': 'top',
+            'html': true,
+            'content': 'rd-new: '+point.getCoordinates()[0].toFixed(2)+', '+point.getCoordinates()[1].toFixed(2)+'<br/>Measure: '+measure
+        });
+		popup.setPosition(e.mapBrowserEvent.coordinate);
+		element.popover('show');
+	}
+	else{
+		element.popover('destroy');
+	}
 }
 
 function popupSingleClick(evt) {
