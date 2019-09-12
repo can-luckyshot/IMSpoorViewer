@@ -1,4 +1,3 @@
-
 function handleFileSelect(evt) {
     evt.stopPropagation();
     evt.preventDefault();
@@ -28,37 +27,82 @@ function handleFileSelect(evt) {
     });
 }
 
-function calcMeasure(line,point){
-	var measure = 0.0;
-	var minDist = 10000000.0;
-	var segments = [];
-        line.forEachSegment(function (start, end) {
-            segments.push(new ol.geom.Line(start, end));           
-		});
-		var closestSegment = segments.sort(sortByDistance(point))[0];
-		line.forEachSegment(function (start, end) {
-			if(start[0]==closestSegment[0][0] && start[1]==closestSegment[0][1]&&end[0]==closestSegment[1][0] && end[1]==closestSegment[1][1]){
-				var dx = point[0] - start[0];
-				var dy = point[1]  - start[1];
-				measure = measure + Math.abs(dx) + Math.abs(dy);
-			}
-			else{
-				var dx = end[0] - start[0];
-				var dy = end[1] - start[1];
-				measure = measure + Math.abs(dx) + Math.abs(dy);
-			}			
-		});
-		
-		return measure;
+function squaredDistance(coord1, coord2) {
+    const dx = coord1[0] - coord2[0];
+    const dy = coord1[1] - coord2[1];
+    return dx * dx + dy * dy;
 }
 
-function sortByDistance(point) {
-	return function(a,b){
-		const deltaA = ol.Coordinate.squaredDistanceToSegment(point, a);
-		const deltaB = ol.Coordinate.squaredDistanceToSegment(point, b);
-		return deltaA - deltaB;
-	}
-  
+function closestOnSegment(coordinate, segment) {
+    const x0 = coordinate[0];
+    const y0 = coordinate[1];
+    const start = segment[0];
+    const end = segment[1];
+    const x1 = start[0];
+    const y1 = start[1];
+    const x2 = end[0];
+    const y2 = end[1];
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const along = (dx === 0 && dy === 0) ? 0 :
+    ((dx * (x0 - x1)) + (dy * (y0 - y1))) / ((dx * dx + dy * dy) || 0);
+    let x,
+    y;
+    if (along <= 0) {
+        x = x1;
+        y = y1;
+    } else if (along >= 1) {
+        x = x2;
+        y = y2;
+    } else {
+        x = x1 + along * dx;
+        y = y1 + along * dy;
+    }
+    return [x, y];
+}
+
+function squaredDistanceToSegment(coordinate, segment) {
+    return squaredDistance(coordinate,
+        closestOnSegment(coordinate, segment));
+}
+
+function calcMeasure(line, point) {
+    var measure = 0.0;
+    var minDist = 10000000.0;
+    var segments = [];
+    var sortedSegments = [];
+    line.forEachSegment(function (start, end) {
+        var seg = {};
+        var roundedStart = [start[0].toFixed(2), start[1].toFixed(2)];
+        var roundeEnd = [end[0].toFixed(2), end[1].toFixed(2)];
+        seg["segment"] = [roundedStart, roundeEnd];
+        segments.push(seg);
+        sortedSegments.push(seg);
+    });
+    sortedSegments.sort(function (a, b) {
+        const deltaA = squaredDistanceToSegment(point, a.segment);
+        const deltaB = squaredDistanceToSegment(point, b.segment);
+        return deltaA - deltaB;
+    });
+    var closestSegment = sortedSegments[0].segment;
+    for (var i = 0; i < segments.length; i++) {
+        var start = segments[i].segment[0];
+        var end = segments[i].segment[1];
+        if (start[0] == closestSegment[0][0] && start[1] == closestSegment[0][1] && end[0] == closestSegment[1][0] && end[1] == closestSegment[1][1]) {
+            var dx = point[0] - start[0];
+            var dy = point[1] - start[1];
+            measure = measure + Math.abs(dx) + Math.abs(dy);
+            console.log('measure: ' + measure);
+            break;
+        } else {
+            var dx = end[0] - start[0];
+            var dy = end[1] - start[1];
+            measure = measure + Math.abs(dx) + Math.abs(dy);
+            console.log('measure: ' + measure);
+        }
+    };
+    console.log('final measure: ' + measure);
+    return measure;
 }
 
 function handleDragOver(evt) {
@@ -122,38 +166,28 @@ function initMap() {
             element: document.getElementById('popup')
         });
     map.addOverlay(popup);
-    //map.on('singleclick', popupSingleClick);
-	var select = new ol.interaction.Select(); 
-	map.addInteraction(select);
-          select.on('select', function(e) {
-            var message = '&nbsp;' +
-                e.target.getFeatures().getLength() +
-                ' selected features (last operation selected ' + e.selected.length +
-                ' and deselected ' + e.deselected.length + ' features)';
-			console.log(message);
-			handleMeasure(e);
-          });
+
 }
 
-function handleMeasure(e){
-	if(e.selected.length == 1){
-		var feature = e.selected = 1;
-		var point = new ol.geom.Point(e.mapBrowserEvent.coordinate);
-		point.transform(map.getView().getProjection(),ol.proj.get("EPSG:28992"));
-		var measure = calcMeasure(feature.getGeometry(),point.getCoordinates());
-		var element = $(popup.getElement());
-		element.popover('destroy');
+function handleMeasure(e) {
+    var element = $(popup.getElement());
+    if (e.selected.length == 1) {
+        var feature = e.selected[0];
+        var point = new ol.geom.Point(e.mapBrowserEvent.coordinate);
+        point.transform(map.getView().getProjection(), ol.proj.get("EPSG:28992"));
+        var measure = calcMeasure(feature.getGeometry(), e.mapBrowserEvent.coordinate);
+
+        element.popover('destroy');
         element.popover({
             'placement': 'top',
             'html': true,
-            'content': 'rd-new: '+point.getCoordinates()[0].toFixed(2)+', '+point.getCoordinates()[1].toFixed(2)+'<br/>Measure: '+measure
+            'content': 'rd-new: ' + point.getCoordinates()[0].toFixed(2) + ', ' + point.getCoordinates()[1].toFixed(2) + '<br/>Measure: ' + measure.toFixed(2)
         });
-		popup.setPosition(e.mapBrowserEvent.coordinate);
-		element.popover('show');
-	}
-	else{
-		element.popover('destroy');
-	}
+        popup.setPosition(e.mapBrowserEvent.coordinate);
+        element.popover('show');
+    } else {
+        element.popover('destroy');
+    }
 }
 
 function popupSingleClick(evt) {
@@ -254,7 +288,7 @@ function parseAndRenderIMX(xmlDoc, src) {
 function buildRailConnectionLayer(railConnections) {
     var vectorLayer = new ol.layer.Vector({
             'title': 'RailConnection',
-            style: styleFunction,
+            style: measureStyle,
             source: new ol.source.Vector({}),
             declutter: true
         });
@@ -278,10 +312,18 @@ function buildRailConnectionLayer(railConnections) {
         vectorLayer.getSource().addFeature(feature);
     });
     lineLayers.getLayers().push(vectorLayer);
-	var snap = new ol.interaction.Snap({
-        source: vectorLayer.getSource()
-      });
-      map.addInteraction(snap);
+    var selectInteraction = new ol.interaction.Select({
+            layers: [vectorLayer]
+        });
+    map.addInteraction(selectInteraction);
+    selectInteraction.on('select', function (e) {
+        var message = '&nbsp;' +
+            e.target.getFeatures().getLength() +
+            ' selected features (last operation selected ' + e.selected.length +
+            ' and deselected ' + e.deselected.length + ' features)';
+        console.log(message);
+        handleMeasure(e);
+    });
 }
 
 function buildTypeLayers(typeMap, isLargeDataset) {
@@ -574,49 +616,73 @@ var styleFunction = function (feature, resolution) {
                 })
             });
         styles.push(style);
-        var measure = 0.0;
-        var rot_offset =  90.0 * Math.PI / 180.0;
-        feature.getGeometry().forEachSegment(function (start, end) {
-            var dx = end[0] - start[0];
-            var dy = end[1] - start[1];
-            measure = measure + Math.abs(dx) + Math.abs(dy);
-            var rotation = Math.atan2(dy, dx);
-            // arrows
-            styles.push(new ol.style.Style({
-                    geometry: new ol.geom.Point(end),
-                    image: new ol.style.Icon({
-                        src: 'textures/arrow.png',
-                        anchor: [0.75, 0.5],
-                        rotateWithView: true,
-                        rotation: -rotation
-                    }),
-                    text: new ol.style.Text({
-                        text: getLabelText(resolution,measure),
-						font: 'Normal 16px Verdana',
-                        fill: new ol.style.Fill({
-                            color: feature.get('stroke_color')
-                        }),
-                        stroke: new ol.style.Stroke({
-                            color: '#ffffff',
-                            width: 1
-                        }),
-						textAlign: 'left',
-						baseline: 'middle',
-                        offsetX: 5,
-                        offsetY: 0,
-                        rotation: -(rotation + rot_offset)
-                    })
-                }));
-        });
     } else {
         console.log('unknown style');
     }
     return styles;
 }
 
-function getLabelText(resolution,measure){
-	if(resolution > 16){
-		return '';
-	}
-	return 'm=' + measure.toFixed(1);
+var measureStyle = function (feature, resolution) {
+    var styles = [];
+    var style = new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: feature.get('stroke_color'),
+                width: 2
+            }),
+            text: new ol.style.Text({
+                text: feature.get('label'),
+                fill: new ol.style.Fill({
+                    color: feature.get('text_color')
+                }),
+                stroke: new ol.style.Stroke({
+                    color: feature.get('text_color'),
+                    width: 1
+                }),
+                offsetX: 0,
+                offsetY: -5,
+            })
+        });
+    styles.push(style);
+    var measure = 0.0;
+    var rot_offset = 90.0 * Math.PI / 180.0;
+    feature.getGeometry().forEachSegment(function (start, end) {
+        var dx = end[0] - start[0];
+        var dy = end[1] - start[1];
+        measure = measure + Math.abs(dx) + Math.abs(dy);
+        var rotation = Math.atan2(dy, dx);
+        // arrows
+        styles.push(new ol.style.Style({
+                geometry: new ol.geom.Point(end),
+                image: new ol.style.Icon({
+                    src: 'textures/arrow.png',
+                    anchor: [0.75, 0.5],
+                    rotateWithView: true,
+                    rotation: -rotation
+                }),
+                text: new ol.style.Text({
+                    text: getLabelText(resolution, measure),
+                    font: 'Normal 16px Verdana',
+                    fill: new ol.style.Fill({
+                        color: feature.get('stroke_color')
+                    }),
+                    stroke: new ol.style.Stroke({
+                        color: '#ffffff',
+                        width: 1
+                    }),
+                    textAlign: 'left',
+                    baseline: 'middle',
+                    offsetX: 5,
+                    offsetY: 0,
+                    rotation:  - (rotation + rot_offset)
+                })
+            }));
+    });
+    return styles;
+}
+
+function getLabelText(resolution, measure) {
+    if (resolution > 16) {
+        return '';
+    }
+    return 'm=' + measure.toFixed(1);
 };
