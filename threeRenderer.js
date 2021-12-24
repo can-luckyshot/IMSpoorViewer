@@ -160,7 +160,8 @@ function buildRailConnections(railConnections) {
 		var puic = rc.attr('puic');
 		//console.log('building: '+puic);
 		var tr = rc.attr('trackRef');
-		var passageRefs = rc.attr('passageRefs').split(' ');
+		var iets =  ""+rc.attr('passageRefs');
+		var passageRefs =iets.split(' ');
 
 		var lines = [];
 		if (tr) {
@@ -188,23 +189,25 @@ function buildRailConnections(railConnections) {
 			});
 		}
 		//console.log('lines: ' + lines.length);
-		var points = joinLines(lines, firstJunction);
-		//console.log('joined: ' + points);
-		//console.log('joined: ' + points.length);
-		dedubPoints(points);
-		var name = rc.attr('name');
-		if (points.length > 1) {
-			console.log('adding Track: ' + name);
-			var path = buildPath(points);
-			railPaths.push({
-				puic: puic,
-				path: path,
-				name: name
-			});
-			var mesh = buildTrackMesh(path, points.length, depthIndex++);
-			scene.add(mesh);
-		} else {
-			console.error("not enough points for puic " + puic);
+		if(lines>0){
+			var points = joinLines(lines, firstJunction);
+			//console.log('joined: ' + points);
+			//console.log('joined: ' + points.length);
+			dedubPoints(points);
+			var name = rc.attr('name');
+			if (points.length > 1) {
+				console.log('adding Track: ' + name);
+				var path = buildPath(points);
+				railPaths.push({
+					puic: puic,
+					path: path,
+					name: name
+				});
+				var mesh = buildTrackMesh(path, points.length, depthIndex++);
+				scene.add(mesh);
+			} else {
+				console.error("not enough points for puic " + puic);
+			}
 		}
 	});
 }

@@ -141,7 +141,11 @@ function loadDemoFile() {
 }
 
 function parseAndRenderIMX(xmlDoc, src) {
-	var geoms = xmlDoc.getElementsByTagName("GeographicLocation");
+	var situation = xmlDoc.getElementsByTagName("Situation");
+	if(situation.length == 0){
+		situation = xmlDoc.getElementsByTagName("NewSituation");
+	}
+	var geoms = $(situation).find('GeographicLocation');
 	var objectsWithGeom = [];
 	$.each(geoms, function (index, geom) {
 		objectsWithGeom.push(geom.parentNode.parentNode);
