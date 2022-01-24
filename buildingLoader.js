@@ -34,3 +34,16 @@ function getBuildingsWkt(wktMLS,bufferSize, onSucces) {
 	$.get(pand_url + params, onSucces);
 }
 
+function getBuildingsFromLine(gmlLineString,bufferSize, onSucces) {
+	var pand_url = 'https://service.pdok.nl/lv/bag/wfs/v2_0?';
+	var params = 'request=GetFeature&';
+	params += 'service=WFS&';
+	params += 'version=2.0.0&';
+	params += 'typeName=bag:pand&';
+	params += 'outputFormat=json&';
+	params += 'srsName=EPSG:28992&';
+	params += '&Filter=<Filter><DWithin><PropertyName>Geometry</PropertyName><gml:LineString><gml:coordinates>'+gmlLineString+'</gml:coordinates></gml:LineString><Distance units=\'m\'>'+bufferSize+'</Distance></DWithin></Filter>';
+	console.log(pand_url + params);
+	$.get(pand_url + params, onSucces);
+}
+

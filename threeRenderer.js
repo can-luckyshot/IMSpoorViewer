@@ -151,7 +151,7 @@ function buildScene(typeMap, railConnections) {
 	createOverheadLineMasts(typeMap.OverheadLineSupport);
 	//createFurniture(typeMap.ElectricityCabinet, 'models/kast_groot.json');
 	//createFurniture(typeMap.GasCabinet, 'models/kast_klein.json');
-	//createBuildings(typeMap.Track);
+	createBuildings(typeMap.Track);
 }
 
 function buildRailConnections(railConnections) {
@@ -718,10 +718,12 @@ function createBuildings(tracks) {
 			transparent: true,
 			opacity: 0.5
 		}));
+	console.log(tracks.list);
 	$.each(tracks.list, function (index, track) {
-		var coords = getGmlCoords(track);
-		var wktStr = 'LINESTRING (' + wktCoordStr(coords) + ')';
-		getBuildingsWkt(wktStr, 500, function (data) {
+		var gmlLineString = $(track).find('GeographicLocation').text().trim();
+		var points = gmlLineString.split(' ');
+		
+		getBuildingsFromLine(points[0]+' '+points[points.length-1], 200, function (data) {
 			$.each(data.features, function (index, feature) {
 				var bid = feature.id;
 				//console.log(bid +' index: '+buildingIds.indexOf(bid));
@@ -734,12 +736,6 @@ function createBuildings(tracks) {
 			});
 		});
 	});
-
-	//getBuildings(trackBufferGeom, function(data) {
-	//	console.log('data ontvangen');
-	//	console.log(data);
-	//});
-
 }
 
 function reportBuilding(feature) {
