@@ -141,9 +141,21 @@ function loadDemoFile() {
 }
 
 function parseAndRenderIMX(xmlDoc, src) {
+	// pre IMX 12.0.0 root of non project IMX
 	var situation = xmlDoc.getElementsByTagName("Situation");
 	if(situation.length == 0){
+		// pre IMX 12.0.0 root of new data within project IMX
 		situation = xmlDoc.getElementsByTagName("NewSituation");
+	}
+	if(situation.length == 0){
+		// probably post IMX 12.0.0 every root is named different
+		situation = [];
+		situation.push(xmlDoc.documentElement);
+	}
+	if(situation.length == 0){
+		var msg = "invalid IMX file";
+		console.log(msg);
+		alert(msg);
 	}
 	var geoms = $(situation).find('GeographicLocation');
 	var objectsWithGeom = [];
